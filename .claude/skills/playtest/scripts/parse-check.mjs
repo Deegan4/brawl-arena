@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Standalone parse-check for BRAWL ARENA.html. Exits non-zero on parse error.
-// Same logic as the PostToolUse hook, but always reads the canonical file
-// and prints a friendly OK message on success so the skill workflow has
-// something to grep for.
+// Iterates EVERY inline <script> block (i.e. <script>…</script> with no `src`)
+// so adding the 3D preview script alongside the main game script doesn't hide
+// errors in the second block. Same regex shape lives in the PostToolUse hook.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -19,19 +19,30 @@ catch (e) {
   process.exit(2);
 }
 
-const match = src.match(/<script>([\s\S]*?)<\/script>/);
-if (!match) {
-  console.error('no <script> block found in BRAWL ARENA.html');
+// Match `<script>` tags WITHOUT a src= attribute, capturing their body.
+const blocks = [...src.matchAll(/<script(\b[^>]*)>([\s\S]*?)<\/script>/g)]
+  .filter(m => !/\bsrc\s*=/.test(m[1]))
+  .map((m, i) => ({ idx: i, body: m[2] }));
+
+if (blocks.length === 0) {
+  console.error('no inline <script> block found in BRAWL ARENA.html');
   process.exit(2);
 }
 
-try {
-  new vm.Script(match[1], { filename: 'brawl-arena-script-block.js' });
-  const lineCount = match[1].split('\n').length;
-  console.log(`OK — script block parses (${lineCount} lines)`);
+let totalLines = 0, ok = true;
+for (const b of blocks) {
+  try {
+    new vm.Script(b.body, { filename: `script-block-${b.idx}.js` });
+    totalLines += b.body.split('\n').length;
+  } catch (e) {
+    ok = false;
+    console.error(`PARSE ERROR in script block #${b.idx}: ${e.message}`);
+  }
+}
+
+if (ok) {
+  console.log(`OK — ${blocks.length} inline script block(s) parse cleanly (${totalLines} total lines)`);
   process.exit(0);
-} catch (e) {
-  console.error(`PARSE ERROR: ${e.message}`);
-  if (e.stack) console.error(e.stack.split('\n').slice(0, 3).join('\n'));
+} else {
   process.exit(1);
 }

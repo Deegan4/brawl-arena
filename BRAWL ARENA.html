@@ -16,7 +16,33 @@
     -webkit-tap-highlight-color: transparent; -webkit-user-select:none; user-select:none;
     touch-action:none; overscroll-behavior:none;
   }
-  canvas { display:block; position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
+  canvas#c { display:block; position:absolute; inset:0; width:100%; height:100%; touch-action:none; z-index:2; }
+  /* Phase 1 3D preview — small corner viewport. Sits behind the 2D canvas
+     and the UI so it's visible but doesn't interact with gameplay yet. */
+  canvas#c3d {
+    display:block; position:fixed;
+    right: calc(12px + env(safe-area-inset-right));
+    top: calc(72px + env(safe-area-inset-top));
+    width: 220px; height: 220px;
+    z-index: 9;
+    border-radius: 14px;
+    border: 1px solid rgba(140,180,255,.5);
+    box-shadow: 0 0 24px rgba(80,160,255,.35), inset 0 0 18px rgba(80,160,255,.18);
+    background: #0a0820;
+    pointer-events: none;
+  }
+  #c3d-label {
+    position: fixed;
+    right: calc(12px + env(safe-area-inset-right));
+    top: calc(48px + env(safe-area-inset-top));
+    z-index: 10;
+    font-size: 10px; letter-spacing: 3px; opacity: .6; color: #cdf;
+    pointer-events: none;
+    text-shadow: 0 0 6px rgba(80,160,255,.6);
+  }
+  @media (max-width: 540px) {
+    canvas#c3d { width: 130px; height: 130px; }
+  }
   #ui { position:fixed; inset:0; pointer-events:none; z-index:10;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     box-sizing:border-box; }
@@ -119,6 +145,8 @@
 </head>
 <body>
 <canvas id="c"></canvas>
+<canvas id="c3d"></canvas>
+<div id="c3d-label">3D PREVIEW</div>
 <div id="ui">
   <div class="hud">
     <div class="pcard" id="card1">
@@ -238,6 +266,141 @@
   }
   .pause-glyph.show { display:flex; align-items:center; justify-content:center; }
 </style>
+
+<!-- 3D foundation (Phase 1 of /3d branch). Loads BEFORE the 2D game so
+     globalThis.THREE / globalThis.USDZLoader / globalThis.SCENE_USDZ_B64
+     are guaranteed available when the 3D preview boots. The 3D preview lives
+     in its OWN IIFE — it does not touch the 2D game state. -->
+<script src="assets/three-bundle.js"></script>
+<script src="assets/scene-usdz.js"></script>
+<script>
+// ---------- 3D Preview (Phase 1 /3d branch) ----------
+// Renders the embedded USDZ as a spinning model in the corner #c3d canvas.
+// Independent of the 2D game loop. Errors here must never block 2D play.
+(() => {
+  'use strict';
+  const canvas3d = document.getElementById('c3d');
+  const label    = document.getElementById('c3d-label');
+  if (!canvas3d) return;
+  if (!globalThis.THREE) {
+    console.warn('[3d] Three.js bundle not present — preview disabled');
+    canvas3d.style.display = 'none';
+    if (label) label.style.display = 'none';
+    return;
+  }
+  const THREE = globalThis.THREE;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0c0628);
+
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 200);
+  camera.position.set(2.4, 1.6, 3.2);
+  camera.lookAt(0, 0.6, 0);
+
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true, alpha: true });
+  } catch (e) {
+    console.warn('[3d] WebGL unavailable:', e.message);
+    canvas3d.style.display = 'none';
+    if (label) label.style.display = 'none';
+    return;
+  }
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+
+  // Lights — match the 2D game's purple/cyan palette
+  scene.add(new THREE.HemisphereLight(0xb0d2ff, 0x201040, 0.7));
+  const key = new THREE.DirectionalLight(0xffffff, 1.1);
+  key.position.set(3, 5, 2);
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0xff66cc, 0.5);
+  rim.position.set(-4, 2, -3);
+  scene.add(rim);
+
+  // Floor disk so the model has something to stand on visually
+  const floor = new THREE.Mesh(
+    new THREE.CircleGeometry(2.2, 48),
+    new THREE.MeshStandardMaterial({ color: 0x1a1140, roughness: 0.85, metalness: 0.1 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(2.18, 2.30, 64),
+    new THREE.MeshBasicMaterial({ color: 0x66ccff, side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.001;
+  scene.add(ring);
+
+  // Resize the WebGL drawing buffer to match the CSS box of #c3d.
+  function resize3d() {
+    const w = canvas3d.clientWidth, h = canvas3d.clientHeight;
+    if (w <= 0 || h <= 0) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  addEventListener('resize', resize3d);
+  resize3d();
+
+  // Load the embedded USDZ via USDZLoader.parse(). Skip silently if no
+  // loader is available — Three.js USDZLoader is in /examples and might
+  // be absent in a stripped bundle.
+  let modelGroup = null;
+  const USDZLoader = globalThis.USDZLoader;
+  if (USDZLoader && globalThis.SCENE_USDZ_B64) {
+    try {
+      const b64 = globalThis.SCENE_USDZ_B64;
+      const bin = atob(b64);
+      const buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      const loader = new USDZLoader();
+      const loaded = loader.parse(buf.buffer);
+      if (loaded) {
+        modelGroup = loaded;
+        // Auto-fit: scale so the largest dimension is ~1.4 world units, recenter on Y.
+        const box = new THREE.Box3().setFromObject(modelGroup);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+        const scale = 1.4 / maxDim;
+        modelGroup.scale.setScalar(scale);
+        modelGroup.position.set(
+          -center.x * scale,
+          -box.min.y * scale,
+          -center.z * scale
+        );
+        scene.add(modelGroup);
+      }
+    } catch (err) {
+      console.warn('[3d] USDZ parse failed:', err.message);
+      // Fall back to a placeholder cube so the preview shows SOMETHING.
+      modelGroup = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.8, 0.8),
+        new THREE.MeshStandardMaterial({ color: 0x6699ff, roughness: 0.4 })
+      );
+      modelGroup.position.y = 0.4;
+      scene.add(modelGroup);
+    }
+  } else {
+    console.warn('[3d] USDZLoader or SCENE_USDZ_B64 missing — using placeholder cube');
+    modelGroup = new THREE.Mesh(
+      new THREE.BoxGeometry(0.8, 0.8, 0.8),
+      new THREE.MeshStandardMaterial({ color: 0x6699ff, roughness: 0.4 })
+    );
+    modelGroup.position.y = 0.4;
+    scene.add(modelGroup);
+  }
+
+  // Independent RAF loop so pausing/unpausing the 2D game doesn't freeze preview.
+  function frame3d() {
+    if (modelGroup) modelGroup.rotation.y += 0.012;
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame3d);
+  }
+  frame3d();
+})();
+</script>
 
 <script>
 (() => {

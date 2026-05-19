@@ -6,3 +6,5 @@ node_modules/
 .idea/
 # Playtest scratch output (artifacts, not source)
 .claude/skills/playtest/out/
+# Blender placeholder export — superseded by assets/scene.usdz
+textures/
