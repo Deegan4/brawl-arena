@@ -153,6 +153,7 @@
     </div>
   </div>
   <div id="announce"></div>
+  <div id="timer" class="match-timer"></div>
   <div id="center">
     <div id="title">BRAWL ARENA</div>
     <div class="panel hidden" id="intro"></div>
@@ -172,6 +173,16 @@
       <label class="row"><span>CPU difficulty</span>
         <select id="setDiff"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select>
       </label>
+      <label class="row"><span>Match type</span>
+        <select id="setMatch"><option value="stock">Stock</option><option value="time">Time</option></select>
+      </label>
+      <label class="row"><span>Time limit</span>
+        <select id="setTime"><option value="60">60s</option><option value="90" selected>90s</option><option value="120">120s</option></select>
+      </label>
+      <label class="row"><span>Stage</span>
+        <select id="setStage"></select>
+      </label>
+      <label class="row check"><input id="setItems" type="checkbox" checked> <span>Items</span></label>
       <label class="row"><span>SFX volume</span>
         <input id="setVol" type="range" min="0" max="100" value="70">
       </label>
@@ -299,6 +310,15 @@
     border-radius:50% !important; display:none; line-height:1;
   }
   .pause-glyph.show { display:flex; align-items:center; justify-content:center; }
+  /* Match timer (time mode) — centered under the HUD cards */
+  .match-timer {
+    position:absolute; top: calc(8px + env(safe-area-inset-top)); left:0; right:0; margin:auto;
+    width:max-content; display:none; z-index:6;
+    font-weight:900; font-size:26px; letter-spacing:3px; color:#dff;
+    text-shadow:0 0 14px rgba(120,200,255,.7), 0 2px 0 #000a; font-variant-numeric:tabular-nums;
+  }
+  .match-timer.show { display:block; }
+  @media (max-height: 540px) { .match-timer { font-size:18px; top:calc(2px + env(safe-area-inset-top)); } }
 
   /* Character select */
   .char-panel { min-width:min(560px,92vw); }
@@ -349,20 +369,42 @@ addEventListener('orientationchange', () => setTimeout(resize, 200));
 // ---------- World ----------
 const GRAV = 0.85;
 const FLOOR_Y = () => H * 0.78;
+// Stages are layout functions of (floorY, width, height). Vertical gaps are
+// viewport-capped (min of an absolute px and an H-relative value) so platforms
+// keep desktop spacing yet compress on a short phone-landscape screen.
+const STAGES = [
+  { id:'skyline', name:'SKYLINE', layout(fy, w, H) {
+    const lo = Math.min(110, H*0.18), hi = Math.min(200, H*0.34);
+    return [
+      { x: w*0.12, y: fy,      w: w*0.76, h: 22, main:true },
+      { x: w*0.22, y: fy - lo, w: w*0.18, h: 12 },
+      { x: w*0.60, y: fy - lo, w: w*0.18, h: 12 },
+      { x: w*0.42, y: fy - hi, w: w*0.16, h: 12 },
+    ];
+  }},
+  { id:'towers', name:'TOWERS', layout(fy, w, H) {
+    const lo = Math.min(120, H*0.20), hi = Math.min(215, H*0.36);
+    return [
+      { x: w*0.18, y: fy,      w: w*0.64, h: 22, main:true },
+      { x: w*0.05, y: fy - lo, w: w*0.17, h: 12 },
+      { x: w*0.78, y: fy - lo, w: w*0.17, h: 12 },
+      { x: w*0.40, y: fy - hi, w: w*0.20, h: 12 },
+    ];
+  }},
+  { id:'battlefield', name:'BATTLEFIELD', layout(fy, w, H) {
+    const lo = Math.min(95, H*0.16), hi = Math.min(175, H*0.30);
+    return [
+      { x: w*0.10, y: fy,      w: w*0.80, h: 22, main:true },
+      { x: w*0.25, y: fy - lo, w: w*0.16, h: 12 },
+      { x: w*0.59, y: fy - lo, w: w*0.16, h: 12 },
+      { x: w*0.42, y: fy - hi, w: w*0.16, h: 12 },
+    ];
+  }},
+];
+let chosenStage = 0; // reassigned from storage once safeGet is defined
 function platforms() {
-  const fy = FLOOR_Y();
-  const w = W;
-  // Vertical gaps are viewport-capped: on a tall desktop window these resolve
-  // to the original 110/200px; on a short phone-landscape screen they shrink
-  // so the upper platforms don't stack up behind the HUD.
-  const lowGap  = Math.min(110, H * 0.18);
-  const highGap = Math.min(200, H * 0.34);
-  return [
-    { x: w*0.12, y: fy,           w: w*0.76, h: 22, main:true },
-    { x: w*0.22, y: fy - lowGap,  w: w*0.18, h: 12 },
-    { x: w*0.60, y: fy - lowGap,  w: w*0.18, h: 12 },
-    { x: w*0.42, y: fy - highGap, w: w*0.16, h: 12 },
-  ];
+  const st = STAGES[chosenStage] || STAGES[0];
+  return st.layout(FLOOR_Y(), W, H);
 }
 let PLATS = platforms();
 addEventListener('resize', () => PLATS = platforms());
@@ -389,9 +431,19 @@ const settings = (() => {
     sfxVol: 0.7,           // 0..1, scales the master gain
     shake: true,
     showHitbox: false,
+    matchType: 'stock',    // 'stock' | 'time'
+    timeLimit: 90,         // seconds, time mode
+    items: true,           // spawn pickups during a match
   }, s || {});
 })();
 function saveSettings() { safeSet('brawl.settings', JSON.stringify(settings)); }
+
+// Stage selection persists separately from the settings blob.
+chosenStage = (() => {
+  const i = parseInt(safeGet('brawl.stage') || '0', 10);
+  return (Number.isFinite(i) && i >= 0 && i < STAGES.length) ? i : 0;
+})();
+function saveStage() { safeSet('brawl.stage', String(chosenStage)); }
 
 let paused = false;
 addEventListener('keydown', e => {
@@ -699,6 +751,104 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
 }
 
+// ---------- Items / power-ups ----------
+// Pickups fall from the top, settle on platforms, and despawn after a while.
+// heart = heal, star = temporary invincibility, bomb = AoE explosion (risk/reward).
+const items = [];
+const ITEM_TYPES = ['heart', 'star', 'bomb'];
+let itemTimer = 240;
+function spawnItem() {
+  const type = ITEM_TYPES[(Math.random() * ITEM_TYPES.length) | 0];
+  items.push({ type, x: W * (0.2 + Math.random() * 0.6), y: -40,
+    vx: (Math.random() - 0.5) * 2, vy: 1, r: 15, life: 660, onGround: false });
+}
+function updateItems() {
+  if (!settings.items) { if (items.length) items.length = 0; return; }
+  if (--itemTimer <= 0 && items.length < 3) { spawnItem(); itemTimer = 360 + (Math.random() * 240 | 0); }
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    it.vy += GRAV * 0.5; if (it.vy > 10) it.vy = 10;
+    const prevY = it.y; it.x += it.vx; it.y += it.vy; it.vx *= 0.98;
+    it.onGround = false;
+    for (const p of PLATS) {
+      if (prevY + it.r <= p.y + 1 && it.y + it.r >= p.y && it.x > p.x && it.x < p.x + p.w && it.vy >= 0) {
+        it.y = p.y - it.r; it.vy = 0; it.vx *= 0.8; it.onGround = true; break;
+      }
+    }
+    if (--it.life <= 0 || it.y > H + 80) { items.splice(i, 1); continue; }
+    for (const f of [P1, P2]) {
+      if (!f || f.knockoutAnim > 0) continue;
+      if (Math.abs(f.x + f.w/2 - it.x) < f.w/2 + it.r && Math.abs(f.y + f.h/2 - it.y) < f.h/2 + it.r) {
+        applyItem(it, f); items.splice(i, 1); break;
+      }
+    }
+  }
+}
+function applyItem(it, f) {
+  const cx = f.x + f.w/2, cy = f.y + f.h/2;
+  if (it.type === 'heart') {
+    f.pct = Math.max(0, f.pct - 30);
+    spark(cx, cy, '#6f8', 16, 4); announce('+HEAL', '#6f8', 500); tone(720, 0.12, 'sine', 0.16, 980);
+  } else if (it.type === 'star') {
+    f.invul = Math.max(f.invul, 300);
+    spark(cx, cy, '#fd6', 20, 5); pushRing(cx, cy, '#fd6', 12, 70, 20);
+    announce('STAR!', '#fd6', 600); tone(880, 0.2, 'triangle', 0.18, 1320);
+  } else { // bomb — AoE launch on whoever grabbed it AND nearby foes
+    const ex = it.x, ey = it.y;
+    doShake(16); flash(); spark(ex, ey, '#fa4', 30, 8); spark(ex, ey, '#fff', 14, 9);
+    pushRing(ex, ey, '#fa4', 12, 95, 22); noise(0.3, 0.4, 800); tone(120, 0.3, 'sawtooth', 0.22, 50);
+    for (const t of [P1, P2]) {
+      if (!t || t.knockoutAnim > 0 || t.invul > 0) continue;
+      const d = Math.hypot(t.x + t.w/2 - ex, t.y + t.h/2 - ey);
+      if (d < 165) {
+        const ang = Math.atan2(t.y + t.h/2 - ey, t.x + t.w/2 - ex);
+        t.pct += 18;
+        const power = (11 + t.pct * 0.05) / (t.stats?.weight || 1);
+        t.vx = Math.cos(ang) * power; t.vy = Math.sin(ang) * power - 4;
+        t.hitstun = Math.min(45, 20 + power); t.invul = 8;
+      }
+    }
+    announce('BOOM!', '#fa4', 500);
+  }
+}
+function drawItems() {
+  for (const it of items) {
+    const bob = Math.sin(frame * 0.1 + it.x) * 2;
+    const x = it.x, y = it.y + bob;
+    ctx.save();
+    const glow = 0.5 + 0.35 * Math.sin(frame * 0.15 + it.x);
+    if (it.type === 'heart') {
+      ctx.fillStyle = `rgba(90,255,150,${(0.25 * glow).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(x, y, it.r + 8, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#3f6';
+      ctx.beginPath();
+      ctx.moveTo(x, y + it.r*0.7);
+      ctx.bezierCurveTo(x - it.r*1.3, y - it.r*0.4, x - it.r*0.3, y - it.r*1.1, x, y - it.r*0.35);
+      ctx.bezierCurveTo(x + it.r*0.3, y - it.r*1.1, x + it.r*1.3, y - it.r*0.4, x, y + it.r*0.7);
+      ctx.fill();
+    } else if (it.type === 'star') {
+      ctx.fillStyle = `rgba(255,220,90,${(0.3 * glow).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(x, y, it.r + 10, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fd5'; ctx.beginPath();
+      for (let k = 0; k < 5; k++) {
+        const a = -Math.PI/2 + k * (Math.PI*2/5);
+        const a2 = a + Math.PI/5;
+        ctx.lineTo(x + Math.cos(a) * it.r, y + Math.sin(a) * it.r);
+        ctx.lineTo(x + Math.cos(a2) * it.r*0.45, y + Math.sin(a2) * it.r*0.45);
+      }
+      ctx.closePath(); ctx.fill();
+    } else {
+      ctx.fillStyle = `rgba(255,150,60,${(0.3 * glow).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(x, y, it.r + 9, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(x, y + 2, it.r, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fa4'; ctx.fillRect(x - 2, y - it.r - 4, 4, 6);
+      ctx.fillStyle = `rgba(255,${180 + (glow*60|0)},80,1)`;
+      ctx.beginPath(); ctx.arc(x + 1, y - it.r - 5, 2.5, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
 let shake = 0;
 function doShake(n) { if (settings.shake) shake = Math.max(shake, n); }
 
@@ -747,6 +897,7 @@ let winner = null;
 let frame = 0;
 let timeScale = 1;
 let hitStop = 0;
+let timeLeft = 0;       // frames remaining (time mode only)
 
 const centerEl = document.getElementById('center');
 const introEl = document.getElementById('intro');
@@ -757,6 +908,7 @@ const pct1El = document.getElementById('pct1');
 const pct2El = document.getElementById('pct2');
 const stocks1El = document.getElementById('stocks1');
 const stocks2El = document.getElementById('stocks2');
+const timerEl = document.getElementById('timer');
 
 function startGame() {
   audioInit();
@@ -765,6 +917,9 @@ function startGame() {
   particles.length = 0;
   rings.length = 0;
   trailGhosts.length = 0;
+  items.length = 0; itemTimer = 240;
+  timeLeft = settings.matchType === 'time' ? settings.timeLimit * 60 : 0;
+  timerEl.classList.toggle('show', settings.matchType === 'time');
   gameState = 'playing'; winner = null; frame = 0;
   centerEl.classList.add('hidden');
   introEl.classList.add('hidden');
@@ -847,6 +1002,13 @@ const setDiff    = document.getElementById('setDiff');
 const setVol     = document.getElementById('setVol');
 const setShake   = document.getElementById('setShake');
 const setHitbox  = document.getElementById('setHitbox');
+const setMatch   = document.getElementById('setMatch');
+const setTime    = document.getElementById('setTime');
+const setStage   = document.getElementById('setStage');
+const setItems   = document.getElementById('setItems');
+
+// Populate the stage dropdown from the STAGES table.
+STAGES.forEach((st, i) => { const o = document.createElement('option'); o.value = String(i); o.textContent = st.name; setStage.appendChild(o); });
 
 function syncSettingsUI() {
   setStocks.value = String(settings.stocks);
@@ -854,6 +1016,10 @@ function syncSettingsUI() {
   setVol.value    = String(Math.round(settings.sfxVol * 100));
   setShake.checked  = settings.shake;
   setHitbox.checked = settings.showHitbox;
+  setMatch.value  = settings.matchType;
+  setTime.value   = String(settings.timeLimit);
+  setStage.value  = String(chosenStage);
+  setItems.checked = settings.items;
 }
 function openSettings()  { syncSettingsUI(); settingsModal.classList.remove('hidden'); }
 function closeSettings() { settingsModal.classList.add('hidden'); saveSettings(); }
@@ -866,6 +1032,10 @@ setDiff  .addEventListener('change', () => { settings.difficulty = setDiff.value
 setVol   .addEventListener('input',  () => { settings.sfxVol = (parseInt(setVol.value, 10) || 0) / 100; applySfxVol(); saveSettings(); });
 setShake .addEventListener('change', () => { settings.shake = setShake.checked; saveSettings(); });
 setHitbox.addEventListener('change', () => { settings.showHitbox = setHitbox.checked; saveSettings(); });
+setMatch .addEventListener('change', () => { settings.matchType = setMatch.value; saveSettings(); });
+setTime  .addEventListener('change', () => { settings.timeLimit = parseInt(setTime.value, 10) || 90; saveSettings(); });
+setStage .addEventListener('change', () => { chosenStage = parseInt(setStage.value, 10) || 0; PLATS = platforms(); saveStage(); });
+setItems .addEventListener('change', () => { settings.items = setItems.checked; saveSettings(); });
 
 // ---------- Pause ----------
 const pauseModal = document.getElementById('pauseModal');
@@ -892,6 +1062,7 @@ function quitToMenu() {
   paused = false;
   pauseModal.classList.add('hidden');
   pauseBtn.classList.remove('show');
+  timerEl.classList.remove('show');
   gameState = 'menu';
   touchEl.classList.remove('active');
   centerEl.classList.remove('hidden');
@@ -920,6 +1091,7 @@ addEventListener('keydown', e => {
 function endGame(text, color) {
   gameState = 'end';
   touchEl.classList.remove('active');
+  timerEl.classList.remove('show');
   document.getElementById('pauseBtn').classList.remove('show');
   announce(text, color, 1500);
   setTimeout(() => {
@@ -940,6 +1112,15 @@ function endGame(text, color) {
     centerEl.classList.remove('hidden');
   }, 1400);
 }
+// Time mode resolves on the clock — most KOs scored wins.
+function endTimeMatch() {
+  const a = P1.koCount, b = P2.koCount;
+  timerEl.classList.remove('show');
+  if (a === b) endGame('DRAW!', '#fff');
+  else if (a > b) endGame(`${P1.name} WINS!`, '#6cf');
+  else endGame(`${P2.name} WINS!`, '#f86');
+}
+
 startBtn.addEventListener('click', () => { goFullscreen(); startGame(); });
 
 // ---------- Physics helpers ----------
@@ -1264,25 +1445,24 @@ function updateFighter(f, control) {
   if (f.x < -120 || f.x > W+120 || f.y > H+150 || f.y < -260) {
     if (f.knockoutAnim <= 0) {
       f.knockoutAnim = 30;
-      f.stocks--;
+      const killer = (f === P1) ? P2 : P1;
+      killer.koCount++;
       flash();
       doShake(16);
       announce(`${f.name} KO'D!`, f === P1 ? '#f86' : '#9cf', 700);
       noise(0.3, 0.4, 600);
       tone(220, 0.4, 'sawtooth', 0.22, 60);
-      if (f.stocks <= 0) {
-        setTimeout(() => {
-          // f is the eliminated fighter — the other one wins.
-          if (f === P1) endGame(`${P2.name} WINS!`, '#f86');
-          else endGame(`${P1.name} WINS!`, '#6cf');
-        }, 600);
+      const respawn = () => {
+        f.x = W*0.5 - f.w/2; f.y = -60; f.vx = 0; f.vy = 0;
+        f.pct = 0; f.hitstun = 0; f.invul = 90; f.knockoutAnim = 0;
+        f.dodgeTimer = 0; f.airDodged = false; f.combo = 0; f.comboTimer = 0;
+      };
+      if (settings.matchType === 'time') {
+        setTimeout(respawn, 700);   // endless stocks; the clock decides the winner
       } else {
-        // respawn
-        setTimeout(() => {
-          f.x = W*0.5 - f.w/2; f.y = -60; f.vx = 0; f.vy = 0;
-          f.pct = 0; f.hitstun = 0; f.invul = 90; f.knockoutAnim = 0;
-          f.dodgeTimer = 0; f.airDodged = false; f.combo = 0; f.comboTimer = 0;
-        }, 700);
+        f.stocks--;
+        if (f.stocks <= 0) setTimeout(() => endGame(`${killer.name} WINS!`, killer === P1 ? '#6cf' : '#f86'), 600);
+        else setTimeout(respawn, 700);
       }
     }
   }
@@ -1697,9 +1877,16 @@ function refreshHud() {
   };
   pct1El.style.color = colorize(P1.pct);
   pct2El.style.color = colorize(P2.pct);
-  const maxS = settings.stocks;
-  stocks1El.textContent = '●'.repeat(Math.max(0,P1.stocks)) + '○'.repeat(Math.max(0, maxS-P1.stocks));
-  stocks2El.textContent = '●'.repeat(Math.max(0,P2.stocks)) + '○'.repeat(Math.max(0, maxS-P2.stocks));
+  if (settings.matchType === 'time') {
+    const s = Math.max(0, Math.ceil(timeLeft / 60));
+    timerEl.textContent = `${String((s/60)|0).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    stocks1El.textContent = 'KO ' + P1.koCount;
+    stocks2El.textContent = 'KO ' + P2.koCount;
+  } else {
+    const maxS = settings.stocks;
+    stocks1El.textContent = '●'.repeat(Math.max(0,P1.stocks)) + '○'.repeat(Math.max(0, maxS-P1.stocks));
+    stocks2El.textContent = '●'.repeat(Math.max(0,P2.stocks)) + '○'.repeat(Math.max(0, maxS-P2.stocks));
+  }
 }
 
 // ---------- Main loop ----------
@@ -1722,6 +1909,7 @@ function loop() {
   ctx.translate(shx, shy);
   drawBackground();
   for (const p of PLATS) drawPlatform(p);
+  drawItems();
 
   if (gameState === 'playing' && !paused) {
     if (hitStop > 0) { hitStop--; }
@@ -1731,6 +1919,10 @@ function loop() {
       // Hit resolution
       applyHits(P1, P2);
       applyHits(P2, P1);
+      updateItems();
+      if (settings.matchType === 'time' && timeLeft > 0) {
+        if (--timeLeft <= 0) endTimeMatch();
+      }
     }
     refreshHud();
   } else if (gameState === 'playing' && paused) {
