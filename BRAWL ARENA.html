@@ -158,6 +158,7 @@
     <div class="panel hidden" id="intro"></div>
     <button id="mode" class="btn-mode" type="button">MODE: VS CPU</button>
     <button id="start">FIGHT</button>
+    <button id="charBtn" class="btn-mode" type="button">FIGHTERS</button>
     <button id="settingsBtn" class="btn-mode" type="button">SETTINGS</button>
     <p id="p2hint" class="p2hint hidden"><b style="color:#fc8">P2</b> keyboard: Arrows + <kbd>,</kbd> hit <kbd>.</kbd> smash <kbd>/</kbd> shield <kbd>Enter</kbd> jump &nbsp;·&nbsp; or plug in a 2nd controller</p>
   </div>
@@ -177,6 +178,23 @@
       <label class="row check"><input id="setShake" type="checkbox" checked> <span>Screen shake</span></label>
       <label class="row check"><input id="setHitbox" type="checkbox"> <span>Show hitboxes (debug)</span></label>
       <button id="settingsDone">DONE</button>
+    </div>
+  </div>
+
+  <div id="charModal" class="modal hidden">
+    <div class="modal-panel char-panel">
+      <h2>CHOOSE FIGHTERS</h2>
+      <div class="char-cols">
+        <div class="char-col">
+          <div class="char-side" style="color:#6cf">P1</div>
+          <div class="char-grid" id="charGridP1"></div>
+        </div>
+        <div class="char-col">
+          <div class="char-side" id="charSideP2" style="color:#f86">CPU</div>
+          <div class="char-grid" id="charGridP2"></div>
+        </div>
+      </div>
+      <button id="charDone">DONE</button>
     </div>
   </div>
 
@@ -281,6 +299,29 @@
     border-radius:50% !important; display:none; line-height:1;
   }
   .pause-glyph.show { display:flex; align-items:center; justify-content:center; }
+
+  /* Character select */
+  .char-panel { min-width:min(560px,92vw); }
+  .char-cols { display:flex; gap:16px; justify-content:center; }
+  .char-col { flex:1; display:flex; flex-direction:column; gap:8px; min-width:0; }
+  .char-side { text-align:center; font-weight:900; letter-spacing:3px; font-size:13px; }
+  .char-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .char-card {
+    cursor:pointer; border:2px solid rgba(140,180,255,.35); border-radius:12px;
+    padding:8px 6px; text-align:center; background:rgba(10,16,36,.7);
+    display:flex; flex-direction:column; align-items:center; gap:4px; transition: border-color .12s, transform .08s;
+  }
+  .char-card:active { transform: scale(.96); }
+  .char-card.sel { border-color:#fff; box-shadow:0 0 16px var(--cc, #6cf), inset 0 0 12px rgba(255,255,255,.12); }
+  .char-swatch { width:34px; height:34px; border-radius:50%; box-shadow:0 0 12px var(--cc,#6cf); }
+  .char-name { font-weight:900; letter-spacing:1px; font-size:13px; }
+  .char-blurb { font-size:9px; opacity:.7; letter-spacing:.5px; }
+  @media (max-height: 540px) {
+    .char-card { padding:4px; }
+    .char-swatch { width:24px; height:24px; }
+    .char-name { font-size:11px; }
+    .char-blurb { font-size:8px; }
+  }
 </style>
 
 <script>
@@ -516,8 +557,26 @@ addEventListener('gamepaddisconnected', e => {
   gpFrame[e.gamepad.index] = null;
 });
 
+// ---------- Characters ----------
+// Each archetype tunes weight (knockback resistance — higher = harder to launch),
+// speed (ground/air accel + cap), jump (jump velocity), and power (outgoing damage).
+// 1.0 is the baseline the move table was tuned against.
+const CHARACTERS = [
+  { id:'bolt',  name:'BOLT',  color:'#39f', headColor:'#cce8ff', weight:1.00, speed:1.00, jump:1.00, power:1.00, blurb:'All-rounder' },
+  { id:'tank',  name:'TANK',  color:'#5c5', headColor:'#dcffce', weight:1.35, speed:0.82, jump:0.90, power:1.18, blurb:'Heavy · hits hard' },
+  { id:'nyx',   name:'NYX',   color:'#c6f', headColor:'#f0d8ff', weight:0.80, speed:1.22, jump:1.14, power:0.90, blurb:'Fast · floaty' },
+  { id:'ember', name:'EMBER', color:'#f73', headColor:'#ffd9c2', weight:0.95, speed:1.06, jump:1.02, power:1.06, blurb:'Aggressive' },
+];
+// Persisted P1 / P2 picks (indices into CHARACTERS).
+let chosen = (() => {
+  let c; try { c = JSON.parse(safeGet('brawl.chosen') || ''); } catch { c = null; }
+  return Object.assign({ p1: 0, p2: 1 }, c || {});
+})();
+function saveChosen() { safeSet('brawl.chosen', JSON.stringify(chosen)); }
+
 // ---------- Fighter ----------
 function makeFighter(opts) {
+  const ch = opts.char || CHARACTERS[0];
   return {
     x: opts.x, y: opts.y, vx: 0, vy: 0,
     w: 44, h: 70,
@@ -526,9 +585,11 @@ function makeFighter(opts) {
     jumps: 0, // doubles
     pct: 0,
     stocks: settings.stocks,
-    color: opts.color, // body
-    headColor: opts.headColor,
+    color: ch.color, // body
+    headColor: ch.headColor,
     name: opts.name,
+    charName: ch.name,
+    stats: ch,
     isAI: !!opts.isAI,
     // states
     attackTimer: 0,      // counts down from move's total frames
@@ -542,8 +603,13 @@ function makeFighter(opts) {
     // visuals
     squash: 1,
     blinkT: Math.random()*200,
+    // combat-depth states
+    dodgeTimer: 0, airDodged: false, _shieldPrev: false, _grabPrev: false,
+    grabbing: 0,            // frames of grab-active lockout (whiff is punishable)
+    combo: 0, comboTimer: 0,
+    koCount: 0,             // KOs this fighter has scored (time mode)
     // AI memory
-    aiCool: 0, aiJumpCool: 0,
+    aiCool: 0, aiJumpCool: 0, aiGrabCool: 0,
   };
 }
 
@@ -551,8 +617,10 @@ let P1, P2;
 function spawnFighters() {
   PLATS = platforms();
   const p2Name = gameMode === '2p' ? 'P2' : 'CPU';
-  P1 = makeFighter({ x: W*0.35, y: FLOOR_Y() - 80, color:'#39f', headColor:'#cce8ff', name:'P1', facing: 1 });
-  P2 = makeFighter({ x: W*0.65, y: FLOOR_Y() - 80, color:'#f55', headColor:'#ffd2c2', name:p2Name, facing:-1, isAI: gameMode !== '2p' });
+  const c1 = CHARACTERS[chosen.p1] || CHARACTERS[0];
+  const c2 = CHARACTERS[chosen.p2] || CHARACTERS[1];
+  P1 = makeFighter({ x: W*0.35, y: FLOOR_Y() - 80, char:c1, name:'P1', facing: 1 });
+  P2 = makeFighter({ x: W*0.65, y: FLOOR_Y() - 80, char:c2, name:p2Name, facing:-1, isAI: gameMode !== '2p' });
 }
 
 // ---------- Effects ----------
@@ -701,8 +769,9 @@ function startGame() {
   centerEl.classList.add('hidden');
   introEl.classList.add('hidden');
   introEl.textContent = '';
-  // Refresh HUD name (CPU vs P2)
-  document.getElementById('name2').textContent = P2.name;
+  // Refresh HUD names with the chosen character (e.g. "P1 · BOLT")
+  document.getElementById('name1').textContent = `${P1.name} · ${P1.charName}`;
+  document.getElementById('name2').textContent = `${P2.name} · ${P2.charName}`;
   if (isMobile) touchEl.classList.add('active');
   document.getElementById('pauseBtn').classList.add('show');
   paused = false;
@@ -734,6 +803,8 @@ function applyMode() {
   modeBtn.textContent = gameMode === '2p' ? 'MODE: VS P2' : 'MODE: VS CPU';
   modeBtn.classList.toggle('on', gameMode === '2p');
   p2HintEl.classList.toggle('hidden', gameMode !== '2p');
+  const sideP2 = document.getElementById('charSideP2');
+  if (sideP2) sideP2.textContent = gameMode === '2p' ? 'P2' : 'CPU';
 }
 modeBtn.addEventListener('click', () => {
   gameMode = gameMode === '2p' ? 'cpu' : '2p';
@@ -741,6 +812,31 @@ modeBtn.addEventListener('click', () => {
   applyMode();
 });
 applyMode();
+
+// ---------- Character select ----------
+const charModal = document.getElementById('charModal');
+const charBtn   = document.getElementById('charBtn');
+const charDone  = document.getElementById('charDone');
+function buildCharGrid(side) {
+  const grid = document.getElementById(side === 'p1' ? 'charGridP1' : 'charGridP2');
+  grid.textContent = '';
+  CHARACTERS.forEach((c, i) => {
+    const card = document.createElement('div');
+    card.className = 'char-card' + (chosen[side] === i ? ' sel' : '');
+    card.style.setProperty('--cc', c.color);
+    const sw = document.createElement('div'); sw.className = 'char-swatch'; sw.style.background = c.color;
+    const nm = document.createElement('div'); nm.className = 'char-name'; nm.textContent = c.name; nm.style.color = c.color;
+    const bl = document.createElement('div'); bl.className = 'char-blurb'; bl.textContent = c.blurb;
+    card.append(sw, nm, bl);
+    card.addEventListener('click', () => { chosen[side] = i; saveChosen(); buildCharGrid(side); });
+    grid.appendChild(card);
+  });
+}
+function openCharSelect() { buildCharGrid('p1'); buildCharGrid('p2'); charModal.classList.remove('hidden'); }
+function closeCharSelect() { charModal.classList.add('hidden'); saveChosen(); }
+charBtn.addEventListener('click', openCharSelect);
+charDone.addEventListener('click', closeCharSelect);
+charModal.addEventListener('click', e => { if (e.target === charModal) closeCharSelect(); });
 
 // ---------- Settings modal ----------
 const settingsModal = document.getElementById('settingsModal');
@@ -778,7 +874,7 @@ const resumeBtn  = document.getElementById('resumeBtn');
 const restartBtn = document.getElementById('restartBtn');
 const quitBtn    = document.getElementById('quitBtn');
 
-function isModalOpen() { return !settingsModal.classList.contains('hidden') || !pauseModal.classList.contains('hidden'); }
+function isModalOpen() { return !settingsModal.classList.contains('hidden') || !pauseModal.classList.contains('hidden') || !charModal.classList.contains('hidden'); }
 function pauseGame() {
   if (gameState !== 'playing' || paused) return;
   paused = true;
@@ -815,6 +911,7 @@ addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (k === 'escape') {
     if (!settingsModal.classList.contains('hidden')) { closeSettings(); e.preventDefault(); return; }
+    if (!charModal.classList.contains('hidden')) { closeCharSelect(); e.preventDefault(); return; }
     if (gameState === 'playing') { togglePause(); e.preventDefault(); }
   } else if (k === 'p' && gameState === 'playing') {
     togglePause(); e.preventDefault();
@@ -862,13 +959,15 @@ function landOnPlatforms(f, prevY) {
   f._wasGround = f.onGround;
 }
 
-function applyKnockback(target, dmg, angle, base, scaling, attacker) {
-  if (target.invul > 0) return false;
+function applyKnockback(target, dmg, angle, base, scaling, attacker, ignoreShield) {
+  if (target.invul > 0 || target.dodgeTimer > 0) return false;
   const hx = target.x + target.w/2;
   const hy = target.y + target.h/2;
   // Attacker color falls back to a neutral hot orange when no attacker context (legacy callers).
   const atkColor = attacker?.color || '#fc4';
-  if (target.shieldOn && target.shieldHP > 0) {
+  // Outgoing damage scales with the attacker's power stat.
+  dmg = dmg * (attacker?.stats?.power || 1);
+  if (!ignoreShield && target.shieldOn && target.shieldHP > 0) {
     target.shieldHP -= dmg*2;
     target.vx += Math.cos(angle) * 1.2;
     spark(hx, hy, '#9cf', 6, 3);
@@ -877,7 +976,8 @@ function applyKnockback(target, dmg, angle, base, scaling, attacker) {
     return false;
   }
   target.pct += dmg;
-  const power = base + (target.pct * scaling) * 0.04;
+  // Heavier fighters resist launch; lighter ones fly farther.
+  const power = (base + (target.pct * scaling) * 0.04) / (target.stats?.weight || 1);
   target.vx = Math.cos(angle) * power;
   target.vy = Math.sin(angle) * power;
   target.hitstun = Math.min(40, 10 + power*1.4);
@@ -1056,8 +1156,9 @@ function updateFighter(f, control) {
   f.shieldOn = shield && canControl && f.onGround && f.shieldHP > 0;
 
   if (canControl && !f.shieldOn) {
-    const speed = f.onGround ? 4.6 : 3.4;
-    f.vx += mx * (f.onGround ? 0.9 : 0.5);
+    const sp = f.stats.speed;
+    const speed = (f.onGround ? 4.6 : 3.4) * sp;
+    f.vx += mx * (f.onGround ? 0.9 : 0.5) * sp;
     f.vx = Math.max(-speed, Math.min(speed, f.vx));
     if (mx !== 0) f.facing = mx > 0 ? 1 : -1;
   }
@@ -1067,8 +1168,8 @@ function updateFighter(f, control) {
 
   // Jump
   if (jumpPress && canControl) {
-    if (f.onGround) { f.vy = -14.5; f.onGround = false; f.jumps = 1; f.squash = 1.3; spark(f.x+f.w/2, f.y+f.h, '#fff', 6, 3); tone(520, 0.08, 'triangle', 0.14); }
-    else if (f.jumps < 2) { f.vy = -13; f.jumps = 2; spark(f.x+f.w/2, f.y+f.h*0.7, '#9cf', 10, 4); tone(700, 0.1, 'triangle', 0.14); }
+    if (f.onGround) { f.vy = -14.5 * f.stats.jump; f.onGround = false; f.jumps = 1; f.squash = 1.3; spark(f.x+f.w/2, f.y+f.h, '#fff', 6, 3); tone(520, 0.08, 'triangle', 0.14); }
+    else if (f.jumps < 2) { f.vy = -13 * f.stats.jump; f.jumps = 2; spark(f.x+f.w/2, f.y+f.h*0.7, '#9cf', 10, 4); tone(700, 0.1, 'triangle', 0.14); }
   }
 
   // Attacks — directional move selection from current mx/my and whether airborne
