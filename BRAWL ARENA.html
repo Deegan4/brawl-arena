@@ -713,6 +713,20 @@ function startGame() {
   tone(660, 0.12, 'square'); setTimeout(()=>tone(990, 0.18, 'square'), 140);
 }
 
+// Request real browser fullscreen (hides the address bar / chrome). Must be
+// called from a user gesture; vendor-prefixed for Safari/older WebKit and
+// wrapped so platforms that disallow it (notably iPhone Safari) fail quietly.
+function goFullscreen() {
+  if (document.fullscreenElement || document.webkitFullscreenElement) return;
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen;
+  if (!req) return;
+  try {
+    const p = req.call(el);
+    if (p && p.catch) p.catch(() => {});
+  } catch (_) { /* unsupported — canvas already fills the viewport regardless */ }
+}
+
 // Mode toggle
 const modeBtn = document.getElementById('mode');
 const p2HintEl = document.getElementById('p2hint');
@@ -829,7 +843,7 @@ function endGame(text, color) {
     centerEl.classList.remove('hidden');
   }, 1400);
 }
-startBtn.addEventListener('click', startGame);
+startBtn.addEventListener('click', () => { goFullscreen(); startGame(); });
 
 // ---------- Physics helpers ----------
 function landOnPlatforms(f, prevY) {
