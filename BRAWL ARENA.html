@@ -115,6 +115,26 @@
     transform: scale(0.7);
   }
   #announce.show { opacity:1; transform: scale(1); }
+
+  /* Rotate-to-landscape gate — only on touch devices held in portrait.
+     The stage is laid out for a wide viewport, so we ask the player to
+     turn the phone rather than cram everything into a tall band. */
+  #rotate {
+    display:none; position:fixed; inset:0; z-index:9999;
+    flex-direction:column; align-items:center; justify-content:center; gap:18px;
+    background:#0a0618; color:#dff; text-align:center; padding:24px;
+  }
+  #rotate .glyph {
+    font-size:64px; line-height:1;
+    animation: rotateHint 1.8s ease-in-out infinite;
+    text-shadow: 0 0 24px #6cf;
+  }
+  #rotate h2 { margin:0; font-size: clamp(22px, 7vw, 34px); letter-spacing:3px; font-weight:900; }
+  #rotate p { margin:0; opacity:.7; font-size:14px; letter-spacing:1px; }
+  @keyframes rotateHint { 0%,55%{transform:rotate(0)} 80%,100%{transform:rotate(-90deg)} }
+  @media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+    #rotate { display:flex; }
+  }
 </style>
 </head>
 <body>
@@ -182,6 +202,12 @@
       <div class="btn" id="btnA">A<small>HIT</small></div>
     </div>
   </div>
+</div>
+
+<div id="rotate">
+  <div class="glyph">📱</div>
+  <h2>ROTATE YOUR DEVICE</h2>
+  <p>BRAWL ARENA plays in landscape</p>
 </div>
 
 <style>
