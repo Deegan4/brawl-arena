@@ -284,9 +284,23 @@
   .modal-panel {
     background: linear-gradient(180deg, rgba(20,28,60,.95), rgba(10,14,32,.95));
     border:1px solid rgba(140,180,255,.55); border-radius:16px;
-    padding:22px 26px; min-width:300px; max-width:92vw;
+    padding:22px 26px; min-width:min(300px,92vw); max-width:92vw;
+    max-height:90vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
     box-shadow: 0 0 40px rgba(80,160,255,.35), inset 0 0 30px rgba(80,160,255,.1);
     display:flex; flex-direction:column; gap:12px; align-items:stretch;
+  }
+  /* Compact modals on short phone-landscape so all rows + DONE fit/scroll. */
+  @media (max-height: 540px) {
+    .modal-panel { padding:12px 16px; gap:7px; max-height:94vh; }
+    .modal-panel h2 { font-size:17px; letter-spacing:3px; margin:0; }
+    .modal-panel .row { font-size:12px; }
+    .modal-panel select, .modal-panel input[type="range"] { min-width:96px; padding:3px 6px; }
+    .modal-panel button { min-height:38px; padding:8px 18px; }
+    /* Settings: two columns so the taller list fits a short landscape screen. */
+    #settingsModal .modal-panel {
+      display:grid; grid-template-columns:1fr 1fr; gap:7px 18px; align-content:start; min-width:min(560px,94vw);
+    }
+    #settingsModal .modal-panel h2, #settingsModal .modal-panel #settingsDone { grid-column:1 / -1; }
   }
   .modal-panel h2 {
     margin:0 0 4px; text-align:center; letter-spacing:6px; font-size:22px;
