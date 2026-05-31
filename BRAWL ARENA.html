@@ -213,6 +213,24 @@
 <style>
   @media (hover: hover) and (pointer: fine) { #touch { display:none !important; } .ctrl-mobile { display:none; } }
   @media (hover: none) and (pointer: coarse) { .ctrl-desktop { display:none; } }
+
+  /* Short viewports (phone held in landscape): the HUD and touch pads are
+     sized for a tall desktop window and otherwise swallow the play area.
+     Shrink them and tuck them into the corners so the stage stays visible. */
+  @media (max-height: 540px) {
+    .hud { top:calc(6px + env(safe-area-inset-top)); gap:8px; padding:0 8px; }
+    .pcard { padding:3px 10px; min-width:30vw; max-width:42vw; border-radius:10px; }
+    .pcard .name { font-size:9px; letter-spacing:2px; }
+    .pcard .pct { font-size: clamp(15px, 4.5vh, 24px); }
+    .pcard .stocks { font-size:11px; margin-top:0; }
+
+    #stick { width:96px; height:96px; left:calc(14px + env(safe-area-inset-left)); bottom:calc(14px + env(safe-area-inset-bottom)); }
+    #knob { width:44px; height:44px; margin:-22px 0 0 -22px; }
+    .btns { right:calc(14px + env(safe-area-inset-right)); bottom:calc(14px + env(safe-area-inset-bottom));
+      grid-template-columns:62px 62px; grid-template-rows:62px 62px; gap:8px; }
+    .btn { width:60px; height:60px; font-size:13px; }
+    .btn small { font-size:7px; }
+  }
   .btn-mode {
     background: linear-gradient(90deg,#3a1a4a,#5a226a) !important;
     border-color:#c6f !important;
@@ -293,11 +311,16 @@ const FLOOR_Y = () => H * 0.78;
 function platforms() {
   const fy = FLOOR_Y();
   const w = W;
+  // Vertical gaps are viewport-capped: on a tall desktop window these resolve
+  // to the original 110/200px; on a short phone-landscape screen they shrink
+  // so the upper platforms don't stack up behind the HUD.
+  const lowGap  = Math.min(110, H * 0.18);
+  const highGap = Math.min(200, H * 0.34);
   return [
-    { x: w*0.12, y: fy,       w: w*0.76, h: 22, main:true },
-    { x: w*0.22, y: fy - 110, w: w*0.18, h: 12 },
-    { x: w*0.60, y: fy - 110, w: w*0.18, h: 12 },
-    { x: w*0.42, y: fy - 200, w: w*0.16, h: 12 },
+    { x: w*0.12, y: fy,           w: w*0.76, h: 22, main:true },
+    { x: w*0.22, y: fy - lowGap,  w: w*0.18, h: 12 },
+    { x: w*0.60, y: fy - lowGap,  w: w*0.18, h: 12 },
+    { x: w*0.42, y: fy - highGap, w: w*0.16, h: 12 },
   ];
 }
 let PLATS = platforms();
