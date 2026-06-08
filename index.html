@@ -99,19 +99,40 @@
 
   /* ---------- Touch / controls ---------- */
   #ctrl{position:absolute;inset:0;z-index:14;pointer-events:none}
-  .stickzone{position:absolute;bottom:0;height:46%;width:48%;pointer-events:auto}
+  .stickzone{position:absolute;bottom:0;height:46%;width:48%;pointer-events:auto;touch-action:none}
   #moveZone{left:0} #aimZone{right:0}
-  .stickbase{position:absolute;width:116px;height:116px;border-radius:50%;
-    background:rgba(255,255,255,.10);border:3px solid rgba(255,255,255,.5);
-    transform:translate(-50%,-50%);opacity:0;transition:opacity .1s;display:flex;align-items:center;justify-content:center;
-    font-size:26px;color:rgba(255,255,255,.6)}
-  .stickknob{position:absolute;width:54px;height:54px;border-radius:50%;
-    background:rgba(255,255,255,.85);border:3px solid #fff;transform:translate(-50%,-50%);opacity:0;transition:opacity .1s}
-  /* default visible joystick hints (static) */
-  #moveHint,#aimHint{position:absolute;bottom:24px;width:96px;height:96px;border-radius:50%;
-    background:rgba(255,255,255,.12);border:3px solid rgba(255,255,255,.55);display:flex;
-    align-items:center;justify-content:center;font-size:30px;color:rgba(255,255,255,.7)}
-  #moveHint{left:22px} #aimHint{right:22px}
+  /* floating joystick (appears under the thumb) */
+  .stickbase{position:absolute;width:134px;height:134px;border-radius:50%;
+    background:radial-gradient(circle at 50% 40%, rgba(18,28,16,.34), rgba(18,28,16,.12) 58%, rgba(255,255,255,.05) 73%);
+    border:2px solid rgba(255,255,255,.42);
+    box-shadow:0 0 0 6px rgba(255,255,255,.05), inset 0 0 26px rgba(0,0,0,.28);
+    transform:translate(-50%,-50%) scale(.55);opacity:0;transition:opacity .12s,transform .12s;
+    display:flex;align-items:center;justify-content:center}
+  .stickbase::before{content:'';position:absolute;width:86px;height:86px;border-radius:50%;border:1px dashed rgba(255,255,255,.20)}
+  .stickbase.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  .stickknob{position:absolute;width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.92);
+    transform:translate(-50%,-50%);opacity:0;transition:opacity .12s;
+    box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 7px 11px rgba(255,255,255,.4), inset 0 -9px 13px rgba(0,0,0,.28)}
+  .stickknob.on{opacity:1}
+  #moveKnob{background:radial-gradient(circle at 38% 30%, #d6ecff, #6aa6ff 54%, #3f78d6)}
+  #aimKnob{background:radial-gradient(circle at 38% 30%, #ffd6ba, #ff8a5b 52%, #ed5638)}
+  /* resting hints in the corners (touch only) */
+  #moveHint,#aimHint{position:absolute;bottom:28px;width:106px;height:106px;border-radius:50%;
+    background:radial-gradient(circle at 50% 40%, rgba(18,28,16,.30), rgba(255,255,255,.04) 73%);
+    border:2px solid rgba(255,255,255,.38);box-shadow:0 0 0 5px rgba(255,255,255,.045), inset 0 0 18px rgba(0,0,0,.26);
+    display:flex;align-items:center;justify-content:center;transition:opacity .12s}
+  #moveHint{left:26px} #aimHint{right:26px}
+  #moveHint.hide,#aimHint.hide{opacity:0}
+  /* CSS glyphs: move = plus, aim = crosshair ring */
+  .gly{position:relative;width:40px;height:40px;opacity:.62}
+  .gly.move::before,.gly.move::after{content:'';position:absolute;background:#fff;border-radius:2px}
+  .gly.move::before{left:50%;top:1px;width:3.6px;height:38px;transform:translateX(-50%)}
+  .gly.move::after{top:50%;left:1px;height:3.6px;width:38px;transform:translateY(-50%)}
+  .gly.aim{border:3px solid #fff;border-radius:50%}
+  .gly.aim::before,.gly.aim::after{content:'';position:absolute;background:#fff}
+  .gly.aim::before{left:50%;top:-8px;width:2.6px;height:54px;transform:translateX(-50%)}
+  .gly.aim::after{top:50%;left:-8px;height:2.6px;width:54px;transform:translateY(-50%)}
+  .gly.aim b{position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;background:#fff;transform:translate(-50%,-50%)}
   #powers{position:absolute;right:16px;bottom:140px;display:flex;flex-direction:column;gap:14px;z-index:16;pointer-events:none}
   .power{width:66px;height:66px;border-radius:50%;pointer-events:auto;cursor:pointer;border:3px solid rgba(255,255,255,.7);
     display:flex;align-items:center;justify-content:center;font-size:28px;position:relative;overflow:hidden;
@@ -160,12 +181,16 @@
     </div>
   </div>
 
-  <!-- ===== Controls ===== -->
+  <!-- ===== Controls (zones capture touch; bases/knobs float over the whole stage) ===== -->
   <div id="ctrl" class="hidden">
-    <div id="moveHint">✛</div>
-    <div id="aimHint">◎</div>
-    <div id="moveZone" class="stickzone"><div class="stickbase" id="moveBase">✛</div><div class="stickknob" id="moveKnob"></div></div>
-    <div id="aimZone" class="stickzone"><div class="stickbase" id="aimBase">◎</div><div class="stickknob" id="aimKnob"></div></div>
+    <div id="moveHint"><div class="gly move"></div></div>
+    <div id="aimHint"><div class="gly aim"><b></b></div></div>
+    <div id="moveZone" class="stickzone"></div>
+    <div id="aimZone" class="stickzone"></div>
+    <div class="stickbase" id="moveBase"><div class="gly move"></div></div>
+    <div class="stickknob" id="moveKnob"></div>
+    <div class="stickbase" id="aimBase"><div class="gly aim"><b></b></div></div>
+    <div class="stickknob" id="aimKnob"></div>
   </div>
   <div id="powers" class="hidden">
     <div class="power" id="boltBtn"><div class="cool" id="boltCool"></div><span>⚡</span></div>
@@ -659,26 +684,34 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 const moveVec={x:0,y:0,active:false};
 const aimVec={x:0,y:0,active:false};
-function stick(zoneId, baseId, knobId, vec){
-  const z=el(zoneId), base=el(baseId), knob=el(knobId);
-  let id=null, ox=0, oy=0;
+function stick(zoneId, baseId, knobId, hintId, vec){
+  const z=el(zoneId), base=el(baseId), knob=el(knobId), hint=el(hintId);
+  let id=null, ox=0, oy=0; const cap=58, DEAD=0.14;
   const sr=()=>cv.getBoundingClientRect();
   z.addEventListener('touchstart',e=>{ const t=e.changedTouches[0]; id=t.identifier; const r=sr();
-    ox=t.clientX-r.left; oy=t.clientY-r.top; base.style.left=knob.style.left=ox+'px'; base.style.top=knob.style.top=oy+'px';
-    base.style.opacity=knob.style.opacity=1; vec.active=true; audioInit(); e.preventDefault(); },{passive:false});
+    ox=t.clientX-r.left; oy=t.clientY-r.top;
+    base.style.left=knob.style.left=ox+'px'; base.style.top=knob.style.top=oy+'px';
+    base.classList.add('on'); knob.classList.add('on'); if(hint) hint.classList.add('hide');
+    vec.active=true; vec.x=vec.y=0; audioInit(); e.preventDefault(); },{passive:false});
   z.addEventListener('touchmove',e=>{ const r=sr();
     for(const t of e.changedTouches){ if(t.identifier!==id) continue;
-      let dx=(t.clientX-r.left)-ox, dy=(t.clientY-r.top)-oy; const m=len(dx,dy), cap=56;
-      if(m>cap){dx=dx/m*cap;dy=dy/m*cap;} knob.style.left=(ox+dx)+'px'; knob.style.top=(oy+dy)+'px';
-      vec.x=dx/cap; vec.y=dy/cap; } e.preventDefault(); },{passive:false});
+      let dx=(t.clientX-r.left)-ox, dy=(t.clientY-r.top)-oy; let m=len(dx,dy);
+      if(m>cap){ dx=dx/m*cap; dy=dy/m*cap; m=cap; }
+      knob.style.left=(ox+dx)+'px'; knob.style.top=(oy+dy)+'px';
+      const mag=m/cap, f = mag<DEAD?0:(mag-DEAD)/(1-DEAD);  // deadzone, scaled
+      vec.x = m>0 ? dx/m*f : 0; vec.y = m>0 ? dy/m*f : 0;
+    } e.preventDefault(); },{passive:false});
   const end=e=>{ for(const t of e.changedTouches){ if(t.identifier===id){ id=null; vec.x=vec.y=0; vec.active=false;
-    base.style.opacity=knob.style.opacity=0; } } };
+    base.classList.remove('on'); knob.classList.remove('on'); if(hint) hint.classList.remove('hide'); } } };
   z.addEventListener('touchend',end); z.addEventListener('touchcancel',end);
 }
 function setupTouch(){
-  stick('moveZone','moveBase','moveKnob',moveVec);
-  stick('aimZone','aimBase','aimKnob',aimVec);
-  if(!isTouch){ el('moveHint').style.display='none'; el('aimHint').style.display='none'; }
+  stick('moveZone','moveBase','moveKnob','moveHint',moveVec);
+  stick('aimZone','aimBase','aimKnob','aimHint',aimVec);
+  if(!isTouch){ // desktop: hide hints and let mouse clicks pass through the stick zones
+    el('moveHint').style.display='none'; el('aimHint').style.display='none';
+    el('moveZone').style.pointerEvents='none'; el('aimZone').style.pointerEvents='none';
+  }
   // power buttons (tap)
   const bind=(id,fn)=>{ const b=el(id); const go=e=>{e.preventDefault(); audioInit(); fn();};
     b.addEventListener('touchstart',go,{passive:false}); b.addEventListener('mousedown',go); };
