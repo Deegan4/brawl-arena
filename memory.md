@@ -29,6 +29,8 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Game feel 2**: aim reticle, reload ring, low-ammo flash, **spectate-after-death** (watch a
   survivor, "Results ▸" button), gamepad support, SFX-volume + aim-sensitivity sliders.
 - **Content**: 12 avatars, 9 weapons (added Magnum). **Tech**: particle pooling + 900 cap.
+- **Fire feel**: muzzle flash at the gun tip, gun recoil kick, ejected brass shell casings,
+  glowing piercing tracers; new hairstyles (mohawk on Bo, cap on Rex).
 - **Automation** (`.claude/`): PostToolUse parse-check hook on `index.html`, SessionStart
   readiness check, permission allowlist. Plus `scripts/parse-check.mjs` + `scripts/validate.mjs`.
   ⚠ Hooks activate only after `/hooks` reload or a session restart (the `.claude/` dir was
@@ -46,8 +48,10 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Validate**: `node scripts/validate.mjs` (parse-check), then render headless at ~430×932 with
   the bundled Chromium `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` driven by the global
   `playwright` module. Read the PNG + check console for errors.
-- **Deploy**: commit to branch `claude/run-game-DkAJ5`, then mirror onto `main` (githack/Pages
-  serve `main`). There is **no CI** (the Actions runner can't run standard workflows here).
+- **Deploy**: commit to branch `claude/run-game-DkAJ5`, then mirror onto `main`. GitHub Actions
+  DO run here (a Pages deploy ran ~32s) but the token **cannot enable Pages** (`enablement:true`
+  left `has_pages:false`), so Pages needs the one-time toggle: Settings → Pages → Deploy from a
+  branch → `main` / root. Then it rebuilds on every push — no workflow needed.
 
 ## Gotchas / constraints (learned the hard way)
 - **Network allowlist** blocks `stickygames.com` and most third-party hosts — can't fetch the

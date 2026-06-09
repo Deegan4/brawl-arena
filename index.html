@@ -355,8 +355,8 @@ const AVATARS = [
   {name:'Kaito',  speed:5.5, health:95,  unlock:13, look:{skin:'#e8b48c',hair:'#141414',outfit:'#2a2f3a',style:'ninja'}},
   {name:'Dennis', speed:6.0, health:80,  unlock:15, look:{skin:'#7bbf5a',hair:'#5a8a3a',outfit:'#3a3f4a',style:'frog'}},
   {name:'Luna',   speed:5.6, health:95,  unlock:12, look:{skin:'#f0c8b0',hair:'#cfd0e8',outfit:'#7a4ab0',style:'long'}},
-  {name:'Rex',    speed:4.6, health:145, unlock:16, look:{skin:'#caa07a',hair:'#3a2a1a',outfit:'#3a5a3a',style:'beard'}},
-  {name:'Bo',     speed:6.3, health:75,  unlock:18, look:{skin:'#e8b48c',hair:'#e0a030',outfit:'#d23030',style:'curly'}},
+  {name:'Rex',    speed:4.6, health:145, unlock:16, look:{skin:'#caa07a',hair:'#b0413a',outfit:'#3a5a3a',style:'cap'}},
+  {name:'Bo',     speed:6.3, health:75,  unlock:18, look:{skin:'#e8b48c',hair:'#e0a030',outfit:'#d23030',style:'mohawk'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
@@ -508,7 +508,7 @@ function makeHuman(isPlayer, avatar, weapon, name){
     x:0, y:0, vx:0, vy:0, aim:-Math.PI/2,
     hp:avatar.health, maxhp:avatar.health, speed:avatar.speed*42,
     alive:true, mag:weapon.mag, reloading:0, fireCd:0, walk:0, hitFlash:0, kills:0, faceX:1,
-    shield:0, burn:0, burnSrc:null, streak:0, lastKillT:-99, team:0, ally:false,
+    shield:0, burn:0, burnSrc:null, streak:0, lastKillT:-99, team:0, ally:false, muzzleT:0, recoil:0,
     // ai
     strafe: Math.random()<.5?-1:1, reJitter:0, aggro:rand(440,560), acc:rand(0.05,0.16),
     think:0, lockT:0, reaction:rand(0.3,0.7), fireMul:rand(1.0,1.5), wanderA:rand(0,TAU),
@@ -657,7 +657,10 @@ function fire(h){
       color: crit?'#ffd24a':(h.isPlayer?'#fff7d0':'#ffe9b0') });
   }
   h.mag--;
+  h.muzzleT=0.06; h.recoil=1;
   for(let i=0;i<5;i++) spark(h.x+Math.cos(h.aim)*16, h.y+Math.sin(h.aim)*16, '#ffd06a', rand(40,150), h.aim+rand(-.4,.4));
+  if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2;  // brass shell
+    spark(h.x+Math.cos(h.aim)*7, h.y+Math.sin(h.aim)*7-5, '#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
   h.vx -= Math.cos(h.aim)*(w.mode==='shotgun'?60:24); h.vy -= Math.sin(h.aim)*(w.mode==='shotgun'?60:24);
   sfx('shoot', w.mode);
   if(h.mag<=0) startReload(h);
@@ -945,6 +948,7 @@ function integrate(h,dt){
   h.x=clamp(h.x+h.vx*dt,R,ARENA-R); h.y=clamp(h.y+h.vy*dt,R,ARENA-R);
   resolveObstacles(h);
   if(h.fireCd>0) h.fireCd-=dt; if(h.hitFlash>0) h.hitFlash-=dt;
+  if(h.muzzleT>0) h.muzzleT-=dt; if(h.recoil>0) h.recoil-=dt*7;
   if(Math.abs(h.vx)>4) h.faceX=h.vx<0?-1:1;
   if(zoneActive() && grace<=0 && outsideZone(h)){ h.hp-=zone.dmg*dt;
     if(Math.random()<dt*7) spark(h.x+rand(-8,8),h.y+rand(-8,8),'#ff7a4a',rand(20,60),rand(0,TAU),.4);
@@ -1137,11 +1141,16 @@ function draw(){
   // bombs
   for(const b of bombs){ ctx.fillStyle='#15181f'; ctx.beginPath(); ctx.arc(b.x,b.y-6,7,0,TAU); ctx.fill();
     ctx.fillStyle = (Math.floor(b.t*12)%2)?'#ff3a2a':'#ffd24a'; ctx.beginPath(); ctx.arc(b.x+3,b.y-12,2.5,0,TAU); ctx.fill(); }
-  // bullets (flame = fiery blobs, others = tracers)
+  // bullets (flame = fiery blobs, others = glowing tracers)
+  ctx.lineCap='round';
   for(const b of bullets){
     if(b.flame){ ctx.globalAlpha=clamp(b.life*3,0,1); ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,b.r||5,0,TAU); ctx.fill(); ctx.globalAlpha=1; continue; }
-    ctx.strokeStyle=b.color; ctx.lineWidth=b.pierce?4:3; ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x-b.vx*0.012,b.y-b.vy*0.012); ctx.stroke(); }
+    const tl = b.pierce?0.02:0.012;
+    if(b.pierce){ ctx.shadowColor=b.color; ctx.shadowBlur=8; }
+    ctx.strokeStyle=b.color; ctx.lineWidth=b.pierce?4:3;
+    ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x-b.vx*tl,b.y-b.vy*tl); ctx.stroke();
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(b.x,b.y,b.pierce?2.2:1.4,0,TAU); ctx.fill(); }
   // particles
   for(const p of particles){ ctx.globalAlpha=clamp(p.life*2,0,1); ctx.fillStyle=p.color;
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,TAU); ctx.fill(); } ctx.globalAlpha=1;
@@ -1357,11 +1366,19 @@ function drawHuman(h){
     ctx.strokeStyle='#8a4a3a'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(ex,hy+3,2,0.15*Math.PI,0.85*Math.PI); ctx.stroke();
   }
   // gun arm (front), rotated to aim; keep the gun upright when aiming left
+  const gname = h.weapon?h.weapon.name:'Pistol';
+  const reach = 15 - (h.recoil>0?h.recoil*3:0);   // recoil kicks the gun back
   ctx.save(); ctx.translate(0,-2); ctx.rotate(ga);
-  ctx.strokeStyle=INK; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(15,2); ctx.stroke();
-  ctx.strokeStyle=flash?'#fff':L.skin; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(15,2); ctx.stroke();
-  ctx.translate(15,2); if(Math.cos(ga)<0) ctx.scale(1,-1);
-  drawGun(h.weapon?h.weapon.name:'Pistol'); ctx.restore();
+  ctx.strokeStyle=INK; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,2); ctx.stroke();
+  ctx.strokeStyle=flash?'#fff':L.skin; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,2); ctx.stroke();
+  ctx.translate(reach,2); if(Math.cos(ga)<0) ctx.scale(1,-1);
+  drawGun(gname);
+  if(h.muzzleT>0){ const gl=(GUNK[gname]||{l:14}).l; ctx.save(); ctx.translate(gl+1,0);
+    ctx.fillStyle='rgba(255,205,80,.55)'; ctx.beginPath(); ctx.arc(0,0,7,0,TAU); ctx.fill();
+    ctx.fillStyle='#fff6c0'; for(let k=0;k<4;k++){ ctx.save(); ctx.rotate(k*Math.PI/2+0.4);
+      ctx.beginPath(); ctx.moveTo(0,-2.4); ctx.lineTo(10+rand(0,3),0); ctx.lineTo(0,2.4); ctx.closePath(); ctx.fill(); ctx.restore(); }
+    ctx.beginPath(); ctx.arc(0,0,3.4,0,TAU); ctx.fill(); ctx.restore(); }
+  ctx.restore();
   // player ring
   if(h.isPlayer){ ctx.strokeStyle='rgba(120,225,90,.9)'; ctx.lineWidth=2.4; ctx.beginPath(); ctx.ellipse(0,19,17,5.5,0,0,TAU); ctx.stroke();
     if(h.reloading>0){ const pr=clamp(1-h.reloading/h.weapon.reload,0,1); ctx.strokeStyle='#ffd166'; ctx.lineWidth=3; ctx.lineCap='round';
@@ -1381,6 +1398,11 @@ function drawHair(L,hy,flip){
     case 'glasses': cap(); ctx.strokeStyle='#111'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(-3,hy-0.3,3,0,TAU); ctx.arc(4,hy-0.3,3,0,TAU); ctx.stroke(); break;
     case 'ninja': ctx.fillStyle=L.outfit; ctx.beginPath(); ctx.arc(0,hy-1.5,10.5,0,TAU); ctx.fill(); ctx.stroke();
       ctx.fillStyle=L.skin; ctx.fillRect(-8,hy-3.5,16,5); break;
+    case 'mohawk': ctx.fillStyle=L.hair; ctx.beginPath(); ctx.moveTo(-2.4,hy-3); ctx.lineTo(-3,hy-14); ctx.lineTo(0,hy-16); ctx.lineTo(3,hy-14); ctx.lineTo(2.4,hy-3); ctx.closePath(); ctx.fill(); ctx.stroke();
+      for(const sx of [-7.5,7.5]){ ctx.fillRect(sx-1,hy-6,2,5); } break;
+    case 'cap': ctx.fillStyle=L.hair; ctx.beginPath(); ctx.arc(0,hy-2,9.9,Math.PI,0); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(flip*8,hy-1,7.5,2.6,0,0,TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,.18)'; ctx.beginPath(); ctx.arc(-2,hy-5,3,0,TAU); ctx.fill(); break;
     case 'frog': ctx.fillStyle=L.skin; ctx.beginPath(); ctx.arc(-5,hy-7.5,4.3,0,TAU); ctx.arc(5,hy-7.5,4.3,0,TAU); ctx.fill(); ctx.stroke();
       ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(-5,hy-7.5,2,0,TAU); ctx.arc(5,hy-7.5,2,0,TAU); ctx.fill();
       ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(-5,hy-7,1,0,TAU); ctx.arc(5,hy-7,1,0,TAU); ctx.fill();
@@ -1547,6 +1569,8 @@ function portraitChibi(av){
   else if(L.style==='dreads'){ cap(); o.fillStyle=L.hair; for(let i=-2;i<=2;i++) o.fillRect(i*4.4-1.2,hy-2,2.5,11); }
   else if(L.style==='mask'){ cap(); o.fillStyle='#cfe8d0'; rr(o,-10,hy,20,9,2); o.fill(); o.stroke(); }
   else if(L.style==='ninja'){ o.fillStyle=L.outfit; o.beginPath(); o.arc(0,hy-1.5,11.5,0,TAU); o.fill(); o.stroke(); o.fillStyle=L.skin; o.fillRect(-9,hy-4,18,5.5); }
+  else if(L.style==='mohawk'){ o.fillStyle=L.hair; o.beginPath(); o.moveTo(-2.6,hy-3); o.lineTo(-3.2,hy-15); o.lineTo(0,hy-17); o.lineTo(3.2,hy-15); o.lineTo(2.6,hy-3); o.closePath(); o.fill(); o.stroke(); for(const sx of [-8,8]) o.fillRect(sx-1,hy-6,2,5); }
+  else if(L.style==='cap'){ o.fillStyle=L.hair; o.beginPath(); o.arc(0,hy-2,10.6,Math.PI,0); o.fill(); o.stroke(); o.beginPath(); o.ellipse(8.5,hy-1,8,2.8,0,0,TAU); o.fill(); o.stroke(); }
   else if(L.style==='frog'){ o.fillStyle=L.skin; o.beginPath(); o.arc(-5.5,hy-8,4.6,0,TAU); o.arc(5.5,hy-8,4.6,0,TAU); o.fill(); o.stroke(); o.fillStyle='#fff'; o.beginPath(); o.arc(-5.5,hy-8,2.2,0,TAU); o.arc(5.5,hy-8,2.2,0,TAU); o.fill(); o.fillStyle='#111'; o.beginPath(); o.arc(-5.5,hy-7.5,1.1,0,TAU); o.arc(5.5,hy-7.5,1.1,0,TAU); o.fill(); }
   else { cap(); if(L.style==='beard'){ o.fillStyle=L.hair; o.beginPath(); o.moveTo(-7.5,hy+1.5); o.quadraticCurveTo(0,hy+12,7.5,hy+1.5); o.closePath(); o.fill(); o.stroke(); } }
   // face (non-frog)
