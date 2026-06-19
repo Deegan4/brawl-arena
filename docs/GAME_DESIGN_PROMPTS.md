@@ -1,6 +1,6 @@
-# Brawl Arena — Game Design Prompts
+# Forge Kingdom — Game Design Prompts
 
-A working set of brainstorming prompts to shape what **Brawl Arena** becomes. These
+A working set of brainstorming prompts to shape what **Forge Kingdom** becomes. These
 are deliberately open-ended — answer the ones that spark something, ignore the rest.
 The goal is to lock a clear **core loop** and **vibe** before writing gameplay code in
 `App.tsx`.
@@ -13,7 +13,7 @@ and screen real estate. Let those constraints sharpen the ideas below.
 
 ## 1. The one-sentence pitch
 
-- In one sentence: what is Brawl Arena and why is it fun? ("A ___ where you ___ to ___.")
+- In one sentence: what is Forge Kingdom and why is it fun? ("A ___ where you ___ to ___.")
 - If a friend played for 30 seconds, what's the single moment that makes them say "again"?
 - What feeling are we selling — chaos, mastery, tension, silliness, power fantasy?
 - Name three existing games it borrows from, and the one thing it does differently.

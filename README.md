@@ -1,7 +1,16 @@
-# Brawl Arena
+# Forge Kingdom
 
-A mobile game built with [Expo](https://expo.dev) (React Native + TypeScript),
-designed to run in **Expo Go**.
+A Clash-of-Clans-style base-builder, built with [Expo](https://expo.dev)
+(React Native + TypeScript) and designed to run in **Expo Go**.
+
+Current build is the **single-player economy slice**: place is fixed for now, but
+gold mines and elixir collectors generate resources over real time (including
+while the app is closed), you collect them, and you spend them on timed building
+upgrades gated by a single builder and your Town Hall level. Progress is saved
+locally, so the kingdom survives an app restart.
+
+See [`docs/CONCEPT.md`](docs/CONCEPT.md) for the full game direction and
+[`docs/GAME_DESIGN_PROMPTS.md`](docs/GAME_DESIGN_PROMPTS.md) for the design notes.
 
 ## Prerequisites
 
@@ -27,11 +36,23 @@ npm run ios       # open in an iOS simulator (macOS only)
 npm run web       # run in the browser
 ```
 
+## How to play (economy slice)
+
+- **Collect:** producers show a badge when they have resources ready — tap them to bank it (up to your storage capacity).
+- **Upgrade:** tap any building, then **Upgrade** in the bottom panel. Upgrades cost resources, take real time, and need a free builder.
+- **Gating:** a building can be at most one level above your **Town Hall** — upgrade the Town Hall to unlock further levels.
+- **Offline:** close the app and come back later; production and build timers catch up to wall-clock time.
+
 ## Project layout
 
-- `App.tsx` — the root component / game screen
+- `App.tsx` — UI: resource bars, base grid, and the build/upgrade panel
+- `src/types.ts` — game data model
+- `src/config.ts` — data-driven buildings, levels, costs, and starting base
+- `src/economy.ts` — pure economy logic (production, capacity, upgrade timers, offline reconcile)
 - `index.ts` — app entry point (`registerRootComponent`)
-- `app.json` — Expo app config (name, icons, orientation)
-- `assets/` — app icons and splash image
+- `app.json` — Expo app config
 
-Start building the game in `App.tsx`.
+## Roadmap
+
+Next up per the concept: army camps + barracks (train troops), then the **raid**
+phase against preset enemy bases (deploy troops, auto-combat, stars + loot).

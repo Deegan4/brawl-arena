@@ -1,6 +1,6 @@
-# Brawl Arena — Concept (Clash-of-Clans-style, v0.2)
+# Forge Kingdom — Concept (Clash-of-Clans-style, v0.2)
 
-A concrete, opinionated direction: **Brawl Arena is a Clash-of-Clans-style base-builder.**
+A concrete, opinionated direction: **Forge Kingdom is a Clash-of-Clans-style base-builder.**
 Build and upgrade a base, grow a resource economy that ticks even while you're away, train
 an army, and raid enemy bases for loot to fund the next upgrade. Picks are in **bold** with
 the runner-up noted so it's easy to push back.
@@ -14,7 +14,7 @@ the runner-up noted so it's easy to push back.
 
 ## 1. The pitch
 
-> **Brawl Arena is a base-building strategy game: grow your village, defend it with towers
+> **Forge Kingdom is a base-building strategy game: grow your village, defend it with towers
 > and walls, train an army, and raid rival bases for gold and elixir to upgrade everything.**
 
 - The "play again / check back" hook: resources tick in real time, build timers finish while
