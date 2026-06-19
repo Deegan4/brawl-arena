@@ -1,24 +1,61 @@
-# Don't Die — Battle Royale
+# Forge Kingdom
 
-A single-file, portrait, mobile-first cartoon **twin-stick survival royale** (HTML5 canvas). Pick a character, pick a weapon, drop into a field of 15, survive the shrinking safe area and the zombies — last one standing wins.
+A Clash-of-Clans-style base-builder, built with [Expo](https://expo.dev)
+(React Native + TypeScript) and designed to run in **Expo Go**.
 
-## ▶ Play
+Current build is the **economy + army layer**: gold mines and elixir collectors
+generate resources over real time (including while the app is closed), you collect
+them, and you spend them on timed building upgrades gated by a single builder and
+your Town Hall level. You can also **train troops** at the Barracks — units queue
+and train on real timers (catching up offline) and fill your Army Camps up to
+capacity. Progress is saved locally, so the kingdom survives an app restart.
 
-### **[▶ TAP HERE TO PLAY](https://raw.githack.com/Deegan4/brawl-arena/main/index.html)**
+See [`docs/CONCEPT.md`](docs/CONCEPT.md) for the full game direction and
+[`docs/GAME_DESIGN_PROMPTS.md`](docs/GAME_DESIGN_PROMPTS.md) for the design notes.
 
-Backup link (if the one above is blank): **[open via htmlpreview](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deegan4/brawl-arena/main/index.html)**
+## Prerequisites
 
-> Tip: on a phone, just tap the **Play** link above. On a laptop you can also download `index.html` and open it in any browser — it needs no server or build step.
+- [Node.js](https://nodejs.org) (LTS)
+- The **Expo Go** app on your phone ([iOS](https://apps.apple.com/app/expo-go/id982107779) / [Android](https://play.google.com/store/apps/details?id=host.exp.exponent))
 
-## How to play
+## Getting started
 
-- **Pick an avatar** (Speed/Health stats, more unlock as you level up) and a **weapon** (Pistol / Rifle / Shotgun / Sniper, each with its own ammo, reload, and special).
-- **Survive** the shrinking *safe area* and the roaming zombies while out-gunning 14 other players.
+```sh
+npm install
+npm start
+```
 
-**Touch (mobile):** left stick = move, right stick = aim & fire, ⚡ = lightning, 💣 = bomb.
+This starts the Expo dev server and prints a QR code. Scan it with the Expo Go
+app (Android) or the Camera app (iOS) to open the game on your device. Your
+phone and computer must be on the same network.
 
-**Keyboard (desktop):** `WASD`/arrows = move, mouse = aim, click/`Space` = fire, `R` = reload, `Q` = lightning, `E` = bomb.
+Other entry points:
 
-## Development
+```sh
+npm run android   # open in an Android emulator
+npm run ios       # open in an iOS simulator (macOS only)
+npm run web       # run in the browser
+```
 
-Everything — markup, styles, and game logic — lives in [`index.html`](index.html). No build system, no dependencies. Syntax-check with `node scripts/parse-check.mjs`. See [CLAUDE.md](CLAUDE.md) for architecture notes.
+## How to play (economy slice)
+
+- **Collect:** producers show a badge when they have resources ready — tap them to bank it (up to your storage capacity).
+- **Upgrade:** tap any building, then **Upgrade** in the bottom panel. Upgrades cost resources, take real time, and need a free builder.
+- **Gating:** a building can be at most one level above your **Town Hall** — upgrade the Town Hall to unlock further levels.
+- **Train troops:** tap the **Barracks** and train Grunts/Archers/Bruisers (cost elixir + time, capped by Army Camp housing). Higher Barracks levels unlock stronger troops.
+- **Offline:** close the app and come back later; production, build timers, and troop training all catch up to wall-clock time.
+
+## Project layout
+
+- `App.tsx` — UI: resource bars, base grid, and the build/upgrade panel
+- `src/types.ts` — game data model
+- `src/config.ts` — data-driven buildings, levels, costs, and starting base
+- `src/economy.ts` — pure economy logic (production, capacity, upgrade timers, offline reconcile)
+- `index.ts` — app entry point (`registerRootComponent`)
+- `app.json` — Expo app config
+
+## Roadmap
+
+Next up per the concept: the **raid** phase against preset enemy bases — deploy
+your trained troops, auto-combat against defenses, and earn stars + looted
+resources to bring home.
