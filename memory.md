@@ -37,6 +37,10 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Art pass 3**: richer `drawGun` (per-weapon stocks/mags/sights, revolver cylinder, scope+bipod,
+  shotgun pump, flame tank+pilot, crossbow bolt, drum, metallic sheen) — shows in-game AND on the
+  weapon cards (`weaponIcon`, now extent-centered). Characters: neck, collar arc, shoulder/belly
+  shading, head rim-light, shoe shine (`drawHuman`); zombies: rim light + torn hem.
 - **Balance & feel pass**: Endless Horde now ramps every wave — `hordeScale` grows zombie HP
   (+9%/wave), damage (up to +120%), and speed (up to +45%); `hordeKind` shifts the mix toward
   runners then brutes; spawn cap raised 26→32. Low-health feedback: a pulsing red "breathing"
