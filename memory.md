@@ -62,9 +62,9 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 ## How to run / validate / deploy
 - The stage **fills the whole viewport** on every device (`resize()` sets `#game` to
   `window.innerWidth/Height` in JS — never CSS `min()/calc()`, which iOS collapses to 0).
-- **Play**: `https://raw.githack.com/Deegan4/brawl-arena/main/index.html` (repo is **public**).
+- **Play**: `https://raw.githack.com/Deegan4/last-pulse/main/index.html` (repo is **public**).
   Add a `?v=...` cache-buster after pushing. Cleaner options: GitHub **Pages** (Settings → Pages
-  → main → / root) → `https://deegan4.github.io/brawl-arena/`, or **Vercel** (import the GitHub
+  → main → / root) → `https://deegan4.github.io/last-pulse/`, or **Vercel** (import the GitHub
   repo at vercel.com → static deploy via `vercel.json`; auto-redeploys on push to `main`). Both
   Pages and Vercel need a one-time manual setup in the user's dashboard — I can't do it (no
   deploy tool; the Vercel MCP here is read-only).

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>Don't Die - Battle Royale</title>
+<title>Last Pulse</title>
 <style>
   :root{
     --grass:#6aa84f; --grass2:#5c9a43; --panel:#5f7d3f; --panelHi:#6f9149;
@@ -39,6 +39,10 @@
   .screen h2{margin:2px 0}
   .screen .sub{color:#eaf6d6;font-weight:700;font-size:15px;margin:2px 0 12px;text-align:center}
   .center{align-items:center;justify-content:center;text-align:center}
+  /* 3D hero preview on the avatar screen — hidden until a model successfully loads */
+  #hero3d{display:none;width:220px;height:220px;margin:0 auto 10px;border-radius:14px;
+    background:radial-gradient(circle at 50% 35%, #3a4a2c, #20251a);box-shadow:0 6px 22px rgba(0,0,0,.35)}
+  #hero3d.ready{display:block}
 
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:520px;margin:0 auto}
   .card{background:rgba(60,82,38,.72);border:2px solid var(--line);border-radius:14px;
@@ -214,7 +218,7 @@
 
   <!-- ===== Start / name screen ===== -->
   <div id="startScreen" class="screen center">
-    <div class="logo">Don't Die<small>Battle Royale</small></div>
+    <div class="logo">Last Pulse<small>Survive the swarm</small></div>
     <div class="namebox">
       <div style="font-weight:800;color:#eaf6d6">Enter your name</div>
       <input id="nameInput" maxlength="12" placeholder="deegan" />
@@ -234,6 +238,7 @@
     <div class="top"><button class="gearbtn" id="avatarGear">⚙</button>
       <h2 class="heading">Select Your Avatar</h2></div>
     <div class="sub">Current level: <span id="curLevel">1</span></div>
+    <canvas id="hero3d" width="220" height="220" title="3D preview"></canvas>
     <div class="grid" id="avatarGrid"></div>
     <div class="footer"><button class="btn" id="toWeaponBtn">Continue</button></div>
   </div>
@@ -1946,6 +1951,53 @@ show('startScreen');
 requestAnimationFrame(loop);
 
 })();
+</script>
+
+<!-- ===== Optional 3D hero (avatar screen) — progressive enhancement =====
+     Loads Three.js from CDN and renders the rigged 3D character with its walk
+     animation. Entirely self-contained and fail-safe: if the CDN, WebGL, or the
+     GLB is unavailable, #hero3d simply stays hidden and the 2D game is unaffected. -->
+<script type="module">
+const HERO_GLB = 'assets/meshy/alex-walk.glb';   // rigged + walking; relative → works on Pages/githack/local
+const cv = document.getElementById('hero3d');
+const avatarScreen = document.getElementById('avatarScreen');
+if (cv && avatarScreen && 'requestAnimationFrame' in window) {
+  (async () => {
+    let THREE, GLTFLoader;
+    try {
+      THREE = await import('https://unpkg.com/three@0.169.0/build/three.module.js');
+      ({ GLTFLoader } = await import('https://unpkg.com/three@0.169.0/examples/jsm/loaders/GLTFLoader.js'));
+    } catch { return; }                              // offline / blocked → stay 2D
+    let renderer;
+    try { renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); }
+    catch { return; }                                // no WebGL → stay 2D
+    renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 100);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x404030, 1.2));
+    const key = new THREE.DirectionalLight(0xffffff, 1.3); key.position.set(2, 4, 3); scene.add(key);
+    let mixer = null, model = null; const clock = new THREE.Clock();
+    new GLTFLoader().load(HERO_GLB, g => {
+      model = g.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+      model.position.sub(c); model.position.y -= size.y * 0.02;
+      const m = Math.max(size.x, size.y, size.z) || 1;
+      camera.position.set(0, size.y * 0.15, m * 1.8);
+      scene.add(model);
+      if (g.animations?.length) { mixer = new THREE.AnimationMixer(model); mixer.clipAction(g.animations[0]).play(); clock.getDelta(); }
+      cv.classList.add('ready');                      // reveal only on success
+    }, undefined, () => {});                           // load error → stay hidden
+    const visible = () => !avatarScreen.classList.contains('hidden');
+    (function spin() {
+      requestAnimationFrame(spin);
+      if (!model || !visible()) return;                // render only while the avatar screen shows
+      model.rotation.y += 0.012;
+      if (mixer) mixer.update(clock.getDelta());
+      renderer.render(scene, camera);
+    })();
+  })();
+}
 </script>
 </body>
 </html>

@@ -1,16 +1,16 @@
 <div align="center">
 
-# 🧟 DON'T DIE — BATTLE ROYALE
+# 🧟 LAST PULSE
 
 ### A portrait, mobile-first, cartoon **twin-stick survival royale** — the entire game in one `index.html`.
 
 Pick a character, pick a gun, drop into a field of 15. Outlast the other players, the roaming zombies, and the closing safe zone. **Last one standing wins.**
 
-## ▶ &nbsp; [CLICK HERE TO PLAY](https://rawcdn.githack.com/Deegan4/brawl-arena/c681f60b69c71a5ebe333fd35a2213219aef57ff/index.html) &nbsp; ◀
+## ▶ &nbsp; [CLICK HERE TO PLAY](https://rawcdn.githack.com/Deegan4/last-pulse/439a876431d4755ded0c8bc40347e758ed687034/index.html) &nbsp; ◀
 
 <sup>opens the game in your browser — no install, no sign-up · for a permanent URL see [Play](#-play)</sup>
 
-[![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://rawcdn.githack.com/Deegan4/brawl-arena/c681f60b69c71a5ebe333fd35a2213219aef57ff/index.html)
+[![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://rawcdn.githack.com/Deegan4/last-pulse/439a876431d4755ded0c8bc40347e758ed687034/index.html)
 &nbsp;
 ![HTML5 Canvas](https://img.shields.io/badge/HTML5-canvas-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 ![Single file](https://img.shields.io/badge/single_file-no_build-blue?style=for-the-badge)
@@ -18,7 +18,7 @@ Pick a character, pick a gun, drop into a field of 15. Outlast the other players
 
 <br/>
 
-<img src="docs/img/start.png" alt="Don't Die — Battle Royale title screen" width="300" />
+<img src="docs/img/start.png" alt="Last Pulse title screen" width="300" />
 
 <table>
 <tr>
@@ -38,15 +38,15 @@ The repo is already Pages-ready (`index.html` at root + `.nojekyll`). This gives
 1. Repo **Settings → Pages**
 2. **Source: Deploy from a branch** → **Branch: `main`** → **Folder: `/ (root)`** → **Save**
 
-Then play at **`https://deegan4.github.io/brawl-arena/`** — it rebuilds automatically on every push to `main`.
+Then play at **`https://deegan4.github.io/last-pulse/`** — it rebuilds automatically on every push to `main`.
 
 ### Play right now (no setup)
 
 These use free third-party proxies for the public `index.html`. If one shows a blank page or error, give it a minute (they cache briefly after a push) or try the next:
 
-- **Latest:** <https://raw.githack.com/Deegan4/brawl-arena/main/index.html>
-- **Pinned (most reliable):** <https://rawcdn.githack.com/Deegan4/brawl-arena/c681f60b69c71a5ebe333fd35a2213219aef57ff/index.html>
-- **Backup:** [open via htmlpreview](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deegan4/brawl-arena/main/index.html)
+- **Latest:** <https://raw.githack.com/Deegan4/last-pulse/main/index.html>
+- **Pinned (most reliable):** <https://rawcdn.githack.com/Deegan4/last-pulse/439a876431d4755ded0c8bc40347e758ed687034/index.html>
+- **Backup:** [open via htmlpreview](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deegan4/last-pulse/main/index.html)
 
 On a laptop you can also download [`index.html`](index.html) and open it in any browser — no server, no build step, no dependencies.
 
@@ -93,4 +93,4 @@ node .claude/skills/run-brawl-arena/driver.mjs --play --mode horde --shoot
 
 See [CLAUDE.md](CLAUDE.md) for architecture notes and [memory.md](memory.md) for the running design log.
 
-<div align="center"><sub>A from-scratch canvas remake inspired by the StickyGames title of the same name — all art is drawn with canvas shapes, no original sprites.</sub></div>
+<div align="center"><sub>A from-scratch canvas remake inspired by the StickyGames title <em>Don't Die</em> — all art is drawn with canvas shapes, no original sprites.</sub></div>
