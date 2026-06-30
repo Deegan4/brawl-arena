@@ -34,6 +34,11 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Balance & feel pass**: Endless Horde now ramps every wave — `hordeScale` grows zombie HP
+  (+9%/wave), damage (up to +120%), and speed (up to +45%); `hordeKind` shifts the mix toward
+  runners then brutes; spawn cap raised 26→32. Low-health feedback: a pulsing red "breathing"
+  vignette under 30% HP that intensifies toward death, plus a `heart` heartbeat sfx that quickens
+  as HP falls (`heartT` cadence in `updatePlayer`).
 - **Graphics pass 2**: checkered mowed-lawn ground texture (cached 256px pattern tile per
   time-of-day, seeded speckles/blades), animated water (sand shore, shallow layer, drifting
   ripples, glint), swaying tree canopies, shockwave `rings[]` on explosions / lightning hits /
@@ -80,7 +85,8 @@ _Done: Progression & stats, character art, joystick upgrade, **New modes & bigge
 _All pre-scoped bundles are shipped (see "Current state")._ Fresh ideas / open work:
 
 0. _(done)_ Spawns/pickups/supply-drops now avoid water + buildings (`blockedSpawn`).
-1. **Balance from real play** — wave ramp (Horde), squad sizes, building density, weapon power.
+1. **Balance from real play** — _Horde wave ramp done_ (`hordeScale`/`hordeKind`); still open:
+   squad sizes, building density, weapon power, zombie pressure in BR.
 2. **Meta depth** — daily challenge, currency/shop, more avatars/weapons, seasonal cosmetics.
 3. **Online** — would need a backend (out of single-file scope); only if the user wants it.
 
