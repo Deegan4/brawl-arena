@@ -56,7 +56,8 @@
     background:linear-gradient(90deg,#bfff5a,#7bbf2e)}
   .card .lvl{text-align:center;margin-top:8px;font-weight:800;font-size:13px;color:#dfeccb}
   .card .special{color:#ffd05a;font-weight:700;font-size:11.5px;text-align:center;margin-top:7px;line-height:1.2}
-  .wicon{font-size:34px;text-align:center;margin:6px 0 2px}
+  .wicon{text-align:center;margin:6px 0 2px;height:46px;display:flex;align-items:center;justify-content:center}
+  .wicon canvas{display:block}
 
   .btn{appearance:none;border:none;cursor:pointer;font-weight:800;letter-spacing:1px;
     color:#22330f;border-radius:13px;padding:14px 26px;font-size:19px;text-transform:uppercase;
@@ -1472,16 +1473,32 @@ function drawDrop(d){
 const GUNK={Pistol:{l:11,c:'#3a3f48'},Rifle:{l:20,c:'#3a3f48'},Shotgun:{l:17,c:'#6a4a2e'},
   SMG:{l:14,c:'#3a3f48'},Magnum:{l:13,c:'#4a5058'},Sniper:{l:26,c:'#2a2f38',scope:1},Crossbow:{l:16,c:'#6a4e2a',bow:1},
   Flame:{l:13,c:'#8a3a2a',tank:1},Minigun:{l:18,c:'#2a2f38',fat:1},Tommy:{l:16,c:'#5a4a3a',drum:1}};
-function drawGun(name){
+function drawGun(name,c){
+  c=c||ctx;
   const g=GUNK[name]||{l:14,c:'#3a3f48'};
-  ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1; ctx.fillStyle=g.c;
-  if(g.fat){ roundRect(0,-4,g.l,8,2); ctx.fill(); ctx.stroke(); ctx.fillStyle='#54585f';
-    for(let i=0;i<3;i++) ctx.fillRect(4+i*4,-4,1.6,8); }
-  else { roundRect(0,-2,g.l,4,1.5); ctx.fill(); ctx.stroke(); ctx.fillRect(2,1,4,5); }
-  if(g.scope){ ctx.fillStyle='#222'; ctx.fillRect(6,-4.6,7,2.2); }
-  if(g.tank){ ctx.fillStyle='#d24a2a'; ctx.fillRect(g.l-1,-3.2,4,6.4); }
-  if(g.bow){ ctx.strokeStyle='#3a2a16'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(g.l,0,5.5,-1.1,1.1); ctx.stroke(); }
-  if(g.drum){ ctx.fillStyle='#3a3038'; ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(7,4.2,3.6,0,TAU); ctx.fill(); ctx.stroke(); }
+  c.strokeStyle='rgba(0,0,0,.3)'; c.lineWidth=1; c.fillStyle=g.c;
+  if(g.fat){ roundRect(0,-4,g.l,8,2,c); c.fill(); c.stroke(); c.fillStyle='#54585f';
+    for(let i=0;i<3;i++) c.fillRect(4+i*4,-4,1.6,8); }
+  else { roundRect(0,-2,g.l,4,1.5,c); c.fill(); c.stroke(); c.fillRect(2,1,4,5); }
+  if(g.scope){ c.fillStyle='#222'; c.fillRect(6,-4.6,7,2.2); }
+  if(g.tank){ c.fillStyle='#d24a2a'; c.fillRect(g.l-1,-3.2,4,6.4); }
+  if(g.bow){ c.strokeStyle='#3a2a16'; c.lineWidth=2; c.beginPath(); c.arc(g.l,0,5.5,-1.1,1.1); c.stroke(); }
+  if(g.drum){ c.fillStyle='#3a3038'; c.strokeStyle='rgba(0,0,0,.3)'; c.lineWidth=1; c.beginPath(); c.arc(7,4.2,3.6,0,TAU); c.fill(); c.stroke(); }
+}
+// render a weapon's real gun art onto a small canvas for the select-grid card
+function weaponIcon(w){
+  const g=GUNK[w.name]||{l:14}; const sc=1.8;
+  const cw=72, ch=46, c=document.createElement('canvas'); c.width=cw; c.height=ch;
+  const o=c.getContext('2d');
+  // faint slot plate so the dark metal reads on the dark card
+  o.fillStyle='rgba(255,255,255,.07)'; roundRect(6,7,cw-12,ch-14,7,o); o.fill();
+  const tx=clamp((cw - g.l*sc)/2, 7, cw); o.translate(tx, ch/2+3); o.scale(sc,sc);
+  o.lineJoin='round'; o.lineCap='round';
+  // light halo behind the gun for contrast
+  o.save(); o.strokeStyle='rgba(245,250,235,.7)'; o.lineWidth=3.2; o.lineCap='round';
+  o.beginPath(); o.moveTo(0,1); o.lineTo(g.l,1); o.stroke(); o.restore();
+  drawGun(w.name, o);
+  return c;
 }
 // cartoon character (front-facing chibi, dark-outlined with shading)
 function drawHuman(h){
@@ -1624,8 +1641,8 @@ function drawZombie(z){
   const hc=clamp(z.hp/z.maxhp,0,1), bw=24*s; if(hc<1){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(z.x-bw/2,z.y-30*s,bw,3);
     ctx.fillStyle= z.kind==='brute'?'#ff7a4a':'#9bdb5a'; ctx.fillRect(z.x-bw/2,z.y-30*s,bw*hc,3); }
 }
-function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function roundRect(x,y,w,h,r,c){ c=c||ctx; c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r);
+  c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 function drawZone(){
   ctx.save(); ctx.beginPath(); ctx.rect(cam.x-50,cam.y-50,W+100,H+100);
   ctx.arc(zone.cx,zone.cy,Math.max(0,zone.r),0,TAU,true);
@@ -1782,14 +1799,16 @@ function buildWeaponGrid(){
   WEAPONS.forEach((w,i)=>{
     const unlocked=weaponUnlocked(w);
     const card=document.createElement('div'); card.className='card'+(i===meta.weapon?' sel':'')+(unlocked?'':' locked');
-    card.innerHTML='<div class="wicon">'+w.icon+'</div><div class="nm">'+w.name+'</div>'+
+    const ic=document.createElement('div'); ic.className='wicon'; ic.appendChild(weaponIcon(w)); card.appendChild(ic);
+    const nm=document.createElement('div'); nm.className='nm'; nm.textContent=w.name; card.appendChild(nm);
+    card.insertAdjacentHTML('beforeend',
       '<div class="row"><span>Damage</span><span>'+w.dmg+'</span></div><div class="bar"><i style="width:'+(Math.min(w.dmg,250)/250*100)+'%"></i></div>'+
       '<div class="row"><span>Bullets</span><span>'+w.mag+'</span></div><div class="bar"><i style="width:'+Math.min(w.mag/10*100,100)+'%"></i></div>'+
       '<div class="row"><span>Reload</span><span>'+w.reload+'s</span></div><div class="bar"><i style="width:'+clamp((3.5-w.reload)/3.5*100,8,100)+'%"></i></div>'+
       '<div class="row"><span>Range</span><span>'+w.range+'</span></div><div class="bar"><i style="width:'+(w.range/600*100)+'%"></i></div>'+
       '<div class="special">SPECIAL: '+w.special+'</div>'+
       '<div class="lvl">'+(unlocked?'Level '+w.unlock:'🔒 Level '+w.unlock)+'</div>'+
-      (unlocked?'':'<div class="lock">🔒</div>');
+      (unlocked?'':'<div class="lock">🔒</div>'));
     if(unlocked) card.addEventListener('click',()=>{ meta.weapon=i; saveMeta(); [...g.children].forEach(c=>c.classList.remove('sel')); card.classList.add('sel'); });
     g.appendChild(card);
   });
