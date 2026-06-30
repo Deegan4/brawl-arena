@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Response convention
+
+End every reply with a short **Next steps** section — a few concrete, prioritized suggestions
+for what to do next (e.g. follow-up work, validation, playtest tuning, or open decisions). Keep
+it brief; omit only when the reply is itself purely a list of next steps.
+
 ## Repository
 
 A single-file HTML5 canvas game: **Don't Die — Battle Royale**, a portrait, mobile-first,
