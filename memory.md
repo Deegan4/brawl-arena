@@ -37,6 +37,10 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Firing feel**: `bulletFx(w)` drives per-weapon shot juice — tracer colour/width/tail/glow/tip,
+  muzzle-flash radius (`h.muzzleR`, scaled in `drawHuman`), recoil kick, spark count/spread,
+  knockback push, and player screen-shake for heavy guns (Sniper/Shotgun/Magnum). Shotgun ejects a
+  red shell. Bullets carry `lw/tl/glow/tip` (draw loop reads them with fallbacks).
 - **Art pass 3**: richer `drawGun` (per-weapon stocks/mags/sights, revolver cylinder, scope+bipod,
   shotgun pump, flame tank+pilot, crossbow bolt, drum, metallic sheen) — shows in-game AND on the
   weapon cards (`weaponIcon`, now extent-centered). Characters: neck, collar arc, shoulder/belly

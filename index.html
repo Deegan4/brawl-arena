@@ -651,6 +651,20 @@ function botTarget(e){
 
 // ---------- Combat ----------
 function startReload(h){ if(h.reloading<=0 && h.mag<h.weapon.mag) h.reloading=h.weapon.reload; }
+// per-weapon firing feel: tracer look (col/lw/tl/glow/tip), muzzle radius (mz),
+// recoil kick, spark count/spread, knockback push, and player screen shake.
+function bulletFx(w){
+  switch(w.name){
+    case 'Sniper':   return {col:'#cdecff',lw:4.5,tl:0.05, glow:12,tip:2.6, mz:10, kick:1.9, sparks:8, spread:.5, push:34, shake:6};
+    case 'Crossbow': return {col:'#d8b46a',lw:3,  tl:0.07, glow:5, tip:1.6, mz:3,  kick:1.2, sparks:2, spread:.3, push:20, shake:0};
+    case 'Shotgun':  return {col:'#ffd9a0',lw:2,  tl:0.008,glow:0, tip:1.0, mz:11, kick:1.7, sparks:9, spread:.7, push:60, shake:5};
+    case 'Magnum':   return {col:'#ffe07a',lw:3.8,tl:0.02, glow:7, tip:2.0, mz:9,  kick:1.6, sparks:7, spread:.6, push:38, shake:4};
+    case 'SMG':      return {col:'#fff2c8',lw:2.2,tl:0.013,glow:0, tip:1.2, mz:6,  kick:.8,  sparks:3, spread:.5, push:18, shake:0};
+    case 'Minigun':  return {col:'#fff0b0',lw:2.4,tl:0.016,glow:3, tip:1.3, mz:7,  kick:.7,  sparks:3, spread:.5, push:16, shake:0};
+    case 'Tommy':    return {col:'#ffe7b0',lw:2.8,tl:0.014,glow:0, tip:1.4, mz:6.5,kick:.9,  sparks:4, spread:.5, push:20, shake:0};
+    default:         return {col:'#fff3c0',lw:3,  tl:0.013,glow:0, tip:1.5, mz:6.5,kick:1,   sparks:5, spread:.4, push:24, shake:0}; // Pistol, Rifle
+  }
+}
 function fire(h){
   if(!h.alive || grace>0 || h.fireCd>0 || h.reloading>0) return;
   if(h.mag<=0){ startReload(h); return; }
@@ -666,22 +680,24 @@ function fire(h){
   }
   const spd = w.mode==='sniper'?1040 : w.mode==='shotgun'?560 : 780;
   const shots = w.mode==='shotgun'?6:1;
+  const fx = bulletFx(w);
   for(let i=0;i<shots;i++){
     const spread = w.mode==='shotgun'? rand(-0.28,0.28) : (h.isPlayer?rand(-0.012,0.012):rand(-h.acc,h.acc));
     const a=h.aim+spread;
     let dmg=w.dmg, crit=false;
     if(w.name==='Pistol' && Math.random()<0.5){ dmg*=2; crit=true; }
-    if(w.mode==='shotgun') dmg = w.dmg;
     bullets.push({ x:h.x+Math.cos(a)*16, y:h.y+Math.sin(a)*16, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
       life:range/spd, owner:h, dmg, crit, pierce: w.mode==='sniper', hits:0,
-      color: crit?'#ffd24a':(h.isPlayer?'#fff7d0':'#ffe9b0') });
+      color: crit?'#ffd24a':fx.col, lw: crit?4.2:fx.lw, tl: fx.tl, glow: crit?10:fx.glow, tip: crit?2.2:fx.tip });
   }
   h.mag--;
-  h.muzzleT=0.06; h.recoil=1;
-  for(let i=0;i<5;i++) spark(h.x+Math.cos(h.aim)*16, h.y+Math.sin(h.aim)*16, '#ffd06a', rand(40,150), h.aim+rand(-.4,.4));
-  if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2;  // brass shell
-    spark(h.x+Math.cos(h.aim)*7, h.y+Math.sin(h.aim)*7-5, '#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
-  h.vx -= Math.cos(h.aim)*(w.mode==='shotgun'?60:24); h.vy -= Math.sin(h.aim)*(w.mode==='shotgun'?60:24);
+  // muzzle flash + recoil scale with the gun
+  h.muzzleT=0.06; h.muzzleR=fx.mz; h.recoil=fx.kick;
+  for(let i=0;i<fx.sparks;i++) spark(h.x+Math.cos(h.aim)*16, h.y+Math.sin(h.aim)*16, pick(['#ffd06a','#ffae3a','#fff1bf']), rand(50,150+fx.mz*8), h.aim+rand(-1,1)*fx.spread);
+  if(w.mode!=='sniper' && w.name!=='Crossbow'){ const ej=h.aim+(Math.random()<.5?1:-1)*Math.PI/2;  // ejected shell (red for shotgun)
+    spark(h.x+Math.cos(h.aim)*7, h.y+Math.sin(h.aim)*7-5, w.mode==='shotgun'?'#c0392b':'#e6c24a', rand(70,150), ej+rand(-.3,.3), .55); }
+  h.vx -= Math.cos(h.aim)*fx.push; h.vy -= Math.sin(h.aim)*fx.push;
+  if(h.isPlayer && fx.shake) shake=Math.min(shake+fx.shake, 14);
   sfx('shoot', w.mode);
   if(h.mag<=0) startReload(h);
 }
@@ -1218,12 +1234,12 @@ function draw(){
   ctx.lineCap='round';
   for(const b of bullets){
     if(b.flame){ ctx.globalAlpha=clamp(b.life*3,0,1); ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,b.r||5,0,TAU); ctx.fill(); ctx.globalAlpha=1; continue; }
-    const tl = b.pierce?0.02:0.012;
-    if(b.pierce){ ctx.shadowColor=b.color; ctx.shadowBlur=8; }
-    ctx.strokeStyle=b.color; ctx.lineWidth=b.pierce?4:3;
+    const tl = b.tl||0.012, lw = b.lw||3, tip = b.tip||1.4;
+    if(b.glow){ ctx.shadowColor=b.color; ctx.shadowBlur=b.glow; }
+    ctx.strokeStyle=b.color; ctx.lineWidth=lw;
     ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x-b.vx*tl,b.y-b.vy*tl); ctx.stroke();
     ctx.shadowBlur=0;
-    ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(b.x,b.y,b.pierce?2.2:1.4,0,TAU); ctx.fill(); }
+    ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(b.x,b.y,tip,0,TAU); ctx.fill(); }
   // particles
   for(const p of particles){ ctx.globalAlpha=clamp(p.life*2,0,1); ctx.fillStyle=p.color;
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,TAU); ctx.fill(); } ctx.globalAlpha=1;
@@ -1590,11 +1606,11 @@ function drawHuman(h){
   ctx.strokeStyle=flash?'#fff':L.skin; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(reach,2); ctx.stroke();
   ctx.translate(reach,2); if(Math.cos(ga)<0) ctx.scale(1,-1);
   drawGun(gname);
-  if(h.muzzleT>0){ const gl=(GUNK[gname]||{l:14}).l; ctx.save(); ctx.translate(gl+1,0);
-    ctx.fillStyle='rgba(255,205,80,.55)'; ctx.beginPath(); ctx.arc(0,0,7,0,TAU); ctx.fill();
+  if(h.muzzleT>0){ const gl=(GUNK[gname]||{l:14}).l, mr=h.muzzleR||7; ctx.save(); ctx.translate(gl+1,0);
+    ctx.fillStyle='rgba(255,205,80,.55)'; ctx.beginPath(); ctx.arc(0,0,mr,0,TAU); ctx.fill();
     ctx.fillStyle='#fff6c0'; for(let k=0;k<4;k++){ ctx.save(); ctx.rotate(k*Math.PI/2+0.4);
-      ctx.beginPath(); ctx.moveTo(0,-2.4); ctx.lineTo(10+rand(0,3),0); ctx.lineTo(0,2.4); ctx.closePath(); ctx.fill(); ctx.restore(); }
-    ctx.beginPath(); ctx.arc(0,0,3.4,0,TAU); ctx.fill(); ctx.restore(); }
+      ctx.beginPath(); ctx.moveTo(0,-mr*0.34); ctx.lineTo(mr*1.4+rand(0,3),0); ctx.lineTo(0,mr*0.34); ctx.closePath(); ctx.fill(); ctx.restore(); }
+    ctx.beginPath(); ctx.arc(0,0,mr*0.48,0,TAU); ctx.fill(); ctx.restore(); }
   ctx.restore();
   // player ring
   if(h.isPlayer){ ctx.strokeStyle='rgba(120,225,90,.9)'; ctx.lineWidth=2.4; ctx.beginPath(); ctx.ellipse(0,19,17,5.5,0,0,TAU); ctx.stroke();
