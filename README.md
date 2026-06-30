@@ -6,6 +6,10 @@
 
 Pick a character, pick a gun, drop into a field of 15. Outlast the other players, the roaming zombies, and the closing safe zone. **Last one standing wins.**
 
+## ▶ &nbsp; [CLICK HERE TO PLAY](https://raw.githack.com/Deegan4/brawl-arena/main/index.html) &nbsp; ◀
+
+<sup>opens the game in your browser — no install, no sign-up</sup>
+
 [![▶ Play Now](https://img.shields.io/badge/▶_PLAY_NOW-online-44cc11?style=for-the-badge&logo=gamejolt&logoColor=white)](https://raw.githack.com/Deegan4/brawl-arena/main/index.html)
 &nbsp;
 ![HTML5 Canvas](https://img.shields.io/badge/HTML5-canvas-E34F26?style=for-the-badge&logo=html5&logoColor=white)
@@ -27,11 +31,19 @@ Pick a character, pick a gun, drop into a field of 15. Outlast the other players
 
 ## ▶ Play
 
-> **[▶ TAP HERE TO PLAY](https://raw.githack.com/Deegan4/brawl-arena/main/index.html)**
+**Play instantly (works now, no setup):**
+> ### [▶ raw.githack.com/Deegan4/brawl-arena/main/index.html](https://raw.githack.com/Deegan4/brawl-arena/main/index.html)
 >
-> Backup link (if the one above is blank): **[open via htmlpreview](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deegan4/brawl-arena/main/index.html)**
+> Backup (if the link above ever shows blank): **[open via htmlpreview](https://htmlpreview.github.io/?https://raw.githubusercontent.com/Deegan4/brawl-arena/main/index.html)**
 
-On a phone, just tap **Play**. On a laptop you can also download [`index.html`](index.html) and open it in any browser — no server, no build step, no dependencies.
+On a phone, just tap the link. On a laptop you can also download [`index.html`](index.html) and open it in any browser — no server, no build step, no dependencies.
+
+**Optional — a cleaner URL via GitHub Pages.** The repo is already Pages-ready (`index.html` at root + `.nojekyll`). Turn it on once and the game lives at a tidy address:
+
+1. Repo **Settings → Pages**
+2. **Source: Deploy from a branch** → **Branch: `main`** → **Folder: `/ (root)`** → **Save**
+
+Then it's playable at **`https://deegan4.github.io/brawl-arena/`** and rebuilds automatically on every push to `main`.
 
 ## ✨ Features
 
