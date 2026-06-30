@@ -38,8 +38,8 @@ On a phone, just tap **Play**. On a laptop you can also download [`index.html`](
 - 🎮 **Twin-stick controls** — dual virtual joysticks on touch, `WASD` + mouse on desktop, plus gamepad support.
 - 🏆 **Three modes** — **Battle Royale** (15 players, shrinking zone), **Endless Horde** (escalating zombie waves), and **Squads** (last team standing).
 - 🧟 **Three zombie types** — `normal`, fast `runner`, and tanky `brute` — that get tougher, faster, and meaner every Horde wave.
-- 🔫 **9 weapons** — Pistol (crit), Rifle, Shotgun, SMG, Magnum, Sniper (pierce), Crossbow, Flamethrower (burn DoT), Minigun — each with its own ammo, reload, range, and feel.
-- 🦸 **12 unlockable avatars** — each with distinct speed / health stats and a hand-drawn cartoon look, gated behind your level.
+- 🔫 **10 weapons** — Pistol (crit), Rifle, Shotgun, SMG, Magnum, Sniper (pierce), Crossbow, Flamethrower (burn DoT), Minigun, and the drum-mag Tommy — each with its own ammo, reload, range, and feel.
+- 🦸 **15 unlockable avatars** — each with distinct speed / health stats and a hand-drawn cartoon look (cyber visor, top hat, crown, mohawk, ninja…), gated behind your level.
 - 📦 **Loot & supply drops** — health, medkits, armor, ammo, and weapon swaps, plus parachuting crates with a strong gun + armor.
 - ⚡ **Power-ups** — chain-lightning and a throwable AoE bomb, on cooldown buttons.
 - 🩸 **Game feel** — hit markers, kill-streak callouts, blood splats, damage-direction indicators, muzzle flash, recoil, brass casings, screen shake, a **#1 VICTORY** confetti screen, and a low-health heartbeat.

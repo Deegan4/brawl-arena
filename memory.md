@@ -28,7 +28,10 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
   bullet-blocking), water ponds, day/dusk/night.
 - **Game feel 2**: aim reticle, reload ring, low-ammo flash, **spectate-after-death** (watch a
   survivor, "Results ▸" button), gamepad support, SFX-volume + aim-sensitivity sliders.
-- **Content**: 12 avatars, 9 weapons (added Magnum). **Tech**: particle pooling + 900 cap.
+- **Content**: 15 avatars, 10 weapons. New looks need a `style` case in BOTH `drawHair`
+  (in-game) and `portraitChibi` (grid); `visor`/`tophat`/`crown` added (Pixel/Duke/Reina,
+  unlock 20/22/25). `visor` suppresses the default face (like `frog`). New weapon **Tommy**
+  (auto, drum mag, unlock 8) — `GUNK.Tommy` has a `drum` flag drawn in `drawGun`.
 - **Fire feel**: muzzle flash at the gun tip, gun recoil kick, ejected brass shell casings,
   glowing piercing tracers; new hairstyles (mohawk on Bo, cap on Rex).
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground

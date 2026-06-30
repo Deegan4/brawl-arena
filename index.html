@@ -357,6 +357,9 @@ const AVATARS = [
   {name:'Luna',   speed:5.6, health:95,  unlock:12, look:{skin:'#f0c8b0',hair:'#cfd0e8',outfit:'#7a4ab0',style:'long'}},
   {name:'Rex',    speed:4.6, health:145, unlock:16, look:{skin:'#caa07a',hair:'#b0413a',outfit:'#3a5a3a',style:'cap'}},
   {name:'Bo',     speed:6.3, health:75,  unlock:18, look:{skin:'#e8b48c',hair:'#e0a030',outfit:'#d23030',style:'mohawk'}},
+  {name:'Pixel',  speed:5.7, health:95,  unlock:20, look:{skin:'#e8b48c',hair:'#2a2f3a',outfit:'#2bd6c0',style:'visor'}},
+  {name:'Duke',   speed:5.0, health:118, unlock:22, look:{skin:'#d9a079',hair:'#1c1c1c',outfit:'#34303a',style:'tophat'}},
+  {name:'Reina',  speed:5.4, health:105, unlock:25, look:{skin:'#f0c8b0',hair:'#3a2a4a',outfit:'#b03a6a',style:'crown'}},
 ];
 const WEAPONS = [
   {name:'Pistol',  icon:'🔫', dmg:30,  mag:5,  reload:2.0,  range:300, fireCd:0.34, mode:'semi',    unlock:1,  special:'50% chance of a critical hit'},
@@ -368,6 +371,7 @@ const WEAPONS = [
   {name:'Crossbow',icon:'🏹', dmg:90,  mag:1,  reload:1.3,  range:480, fireCd:0.9,  mode:'sniper',  unlock:6,  special:'silent piercing bolt'},
   {name:'Flame',   icon:'🔥', dmg:7,   mag:80, reload:2.2,  range:120, fireCd:0.04, mode:'flame',   unlock:7,  special:'sets enemies on fire'},
   {name:'Minigun', icon:'🌀', dmg:9,   mag:60, reload:3.4,  range:260, fireCd:0.05, mode:'auto',    unlock:9,  special:'huge mag — mows down crowds'},
+  {name:'Tommy',   icon:'🎻', dmg:11,  mag:30, reload:1.7,  range:190, fireCd:0.085,mode:'auto',    unlock:8,  special:'drum-mag auto — steady spray'},
 ];
 const INK = '#23281b';   // shared cartoon outline colour
 const RANGE_SCALE = 1.7;
@@ -1467,7 +1471,7 @@ function drawDrop(d){
 }
 const GUNK={Pistol:{l:11,c:'#3a3f48'},Rifle:{l:20,c:'#3a3f48'},Shotgun:{l:17,c:'#6a4a2e'},
   SMG:{l:14,c:'#3a3f48'},Magnum:{l:13,c:'#4a5058'},Sniper:{l:26,c:'#2a2f38',scope:1},Crossbow:{l:16,c:'#6a4e2a',bow:1},
-  Flame:{l:13,c:'#8a3a2a',tank:1},Minigun:{l:18,c:'#2a2f38',fat:1}};
+  Flame:{l:13,c:'#8a3a2a',tank:1},Minigun:{l:18,c:'#2a2f38',fat:1},Tommy:{l:16,c:'#5a4a3a',drum:1}};
 function drawGun(name){
   const g=GUNK[name]||{l:14,c:'#3a3f48'};
   ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1; ctx.fillStyle=g.c;
@@ -1477,6 +1481,7 @@ function drawGun(name){
   if(g.scope){ ctx.fillStyle='#222'; ctx.fillRect(6,-4.6,7,2.2); }
   if(g.tank){ ctx.fillStyle='#d24a2a'; ctx.fillRect(g.l-1,-3.2,4,6.4); }
   if(g.bow){ ctx.strokeStyle='#3a2a16'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(g.l,0,5.5,-1.1,1.1); ctx.stroke(); }
+  if(g.drum){ ctx.fillStyle='#3a3038'; ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(7,4.2,3.6,0,TAU); ctx.fill(); ctx.stroke(); }
 }
 // cartoon character (front-facing chibi, dark-outlined with shading)
 function drawHuman(h){
@@ -1503,8 +1508,8 @@ function drawHuman(h){
   ctx.beginPath(); ctx.arc(0,hy,9.5,0,TAU); ctx.fill(); ctx.stroke();
   if(!flash){ ctx.fillStyle='rgba(0,0,0,.06)'; ctx.beginPath(); ctx.arc(3.5,hy+1.5,5,0,TAU); ctx.fill(); }
   drawHair(L,hy,flip);
-  // face (frog draws its own in drawHair)
-  if(L.style!=='frog'){
+  // face (frog / visor draw their own in drawHair)
+  if(L.style!=='frog' && L.style!=='visor'){
     const ex=flip*1.2;
     ctx.strokeStyle='rgba(24,18,12,.65)'; ctx.lineWidth=1.3;
     ctx.beginPath(); ctx.moveTo(ex-4.6,hy-3.6); ctx.lineTo(ex-1.6,hy-4.1); ctx.moveTo(ex+1.6,hy-4.1); ctx.lineTo(ex+4.6,hy-3.6); ctx.stroke();
@@ -1554,6 +1559,17 @@ function drawHair(L,hy,flip){
       ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(-5,hy-7.5,2,0,TAU); ctx.arc(5,hy-7.5,2,0,TAU); ctx.fill();
       ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(-5,hy-7,1,0,TAU); ctx.arc(5,hy-7,1,0,TAU); ctx.fill();
       ctx.strokeStyle='#2c5a22'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(0,hy+1.5,5,0.1*Math.PI,0.9*Math.PI); ctx.stroke(); break;
+    case 'visor': cap(); ctx.fillStyle='#1d2230'; roundRect(-9,hy-3,18,7,3); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle='#39e6d6'; ctx.lineWidth=1.8; ctx.beginPath(); ctx.moveTo(-6.5,hy+0.4); ctx.lineTo(6.5,hy+0.4); ctx.stroke();
+      ctx.fillStyle='#bafff6'; ctx.beginPath(); ctx.arc(flip*3.5,hy+0.4,1.1,0,TAU); ctx.fill(); break;
+    case 'tophat': cap(); ctx.fillStyle='#23252b';
+      ctx.beginPath(); ctx.ellipse(0,hy-6,11,2.6,0,0,TAU); ctx.fill(); ctx.stroke();
+      roundRect(-6.5,hy-15,13,9,1.5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=L.outfit; ctx.fillRect(-6.5,hy-8.6,13,2.4); break;
+    case 'crown': cap(); ctx.fillStyle='#ffcf3a'; ctx.strokeStyle='#a9791a'; ctx.lineWidth=1.3;
+      ctx.beginPath(); ctx.moveTo(-8,hy-6); ctx.lineTo(-8,hy-9); ctx.lineTo(-4,hy-6.5); ctx.lineTo(0,hy-11); ctx.lineTo(4,hy-6.5); ctx.lineTo(8,hy-9); ctx.lineTo(8,hy-6); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#e2452f'; ctx.beginPath(); ctx.arc(0,hy-7,1.2,0,TAU); ctx.fill();
+      ctx.fillStyle='#39a0ff'; ctx.beginPath(); ctx.arc(-5,hy-6.6,0.9,0,TAU); ctx.arc(5,hy-6.6,0.9,0,TAU); ctx.fill(); break;
     default: cap();
   }
 }
@@ -1719,9 +1735,20 @@ function portraitChibi(av){
   else if(L.style==='mohawk'){ o.fillStyle=L.hair; o.beginPath(); o.moveTo(-2.6,hy-3); o.lineTo(-3.2,hy-15); o.lineTo(0,hy-17); o.lineTo(3.2,hy-15); o.lineTo(2.6,hy-3); o.closePath(); o.fill(); o.stroke(); for(const sx of [-8,8]) o.fillRect(sx-1,hy-6,2,5); }
   else if(L.style==='cap'){ o.fillStyle=L.hair; o.beginPath(); o.arc(0,hy-2,10.6,Math.PI,0); o.fill(); o.stroke(); o.beginPath(); o.ellipse(8.5,hy-1,8,2.8,0,0,TAU); o.fill(); o.stroke(); }
   else if(L.style==='frog'){ o.fillStyle=L.skin; o.beginPath(); o.arc(-5.5,hy-8,4.6,0,TAU); o.arc(5.5,hy-8,4.6,0,TAU); o.fill(); o.stroke(); o.fillStyle='#fff'; o.beginPath(); o.arc(-5.5,hy-8,2.2,0,TAU); o.arc(5.5,hy-8,2.2,0,TAU); o.fill(); o.fillStyle='#111'; o.beginPath(); o.arc(-5.5,hy-7.5,1.1,0,TAU); o.arc(5.5,hy-7.5,1.1,0,TAU); o.fill(); }
+  else if(L.style==='visor'){ cap(); o.fillStyle='#1d2230'; rr(o,-9.5,hy-3,19,7.5,3); o.fill(); o.stroke();
+    o.strokeStyle='#39e6d6'; o.lineWidth=1.8; o.beginPath(); o.moveTo(-7,hy+0.6); o.lineTo(7,hy+0.6); o.stroke();
+    o.fillStyle='#bafff6'; o.beginPath(); o.arc(3.5,hy+0.6,1.2,0,TAU); o.fill(); }
+  else if(L.style==='tophat'){ cap(); o.fillStyle='#23252b';
+    o.beginPath(); o.ellipse(0,hy-6.5,12,2.9,0,0,TAU); o.fill(); o.stroke();
+    rr(o,-7,hy-17,14,10,1.6); o.fill(); o.stroke();
+    o.fillStyle=L.outfit; o.fillRect(-7,hy-9.6,14,2.6); }
+  else if(L.style==='crown'){ cap(); o.fillStyle='#ffcf3a'; o.strokeStyle='#a9791a'; o.lineWidth=1.4;
+    o.beginPath(); o.moveTo(-8.5,hy-6.5); o.lineTo(-8.5,hy-10); o.lineTo(-4.2,hy-7); o.lineTo(0,hy-12); o.lineTo(4.2,hy-7); o.lineTo(8.5,hy-10); o.lineTo(8.5,hy-6.5); o.closePath(); o.fill(); o.stroke();
+    o.fillStyle='#e2452f'; o.beginPath(); o.arc(0,hy-7.5,1.3,0,TAU); o.fill();
+    o.fillStyle='#39a0ff'; o.beginPath(); o.arc(-5.3,hy-7,1,0,TAU); o.arc(5.3,hy-7,1,0,TAU); o.fill(); }
   else { cap(); if(L.style==='beard'){ o.fillStyle=L.hair; o.beginPath(); o.moveTo(-7.5,hy+1.5); o.quadraticCurveTo(0,hy+12,7.5,hy+1.5); o.closePath(); o.fill(); o.stroke(); } }
-  // face (non-frog)
-  if(L.style!=='frog'){
+  // face (frog / visor draw their own)
+  if(L.style!=='frog' && L.style!=='visor'){
     o.strokeStyle='rgba(24,18,12,.65)'; o.lineWidth=1.4; o.beginPath(); o.moveTo(-5,hy-4); o.lineTo(-1.6,hy-4.6); o.moveTo(1.6,hy-4.6); o.lineTo(5,hy-4); o.stroke();
     o.fillStyle='#1a1a1a'; o.beginPath(); o.arc(-3.2,hy-0.4,1.9,0,TAU); o.arc(3.2,hy-0.4,1.9,0,TAU); o.fill();
     o.fillStyle='#fff'; o.beginPath(); o.arc(-3.9,hy-1.1,0.7,0,TAU); o.arc(2.5,hy-1.1,0.7,0,TAU); o.fill();
