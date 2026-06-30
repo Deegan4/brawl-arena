@@ -1564,6 +1564,9 @@ function weaponIcon(w){
 }
 // cartoon character (front-facing chibi, dark-outlined with shading)
 function drawHuman(h){
+  // 3D model layer (progressive): if a model is loaded for this avatar, billboard it and skip 2D.
+  // Falls through to the hand-drawn chibi whenever the 3D system isn't ready/available.
+  if(window.Models3D && Models3D.drawHuman(ctx,h)){ drawNameplate(h); return; }
   const x=h.x, y=h.y, L=h.look, flip=h.faceX<0?-1:1;
   const moving=(h.vx*h.vx+h.vy*h.vy)>140;
   const bob=Math.sin(h.walk)*1.5, step=moving?Math.sin(h.walk)*3.2:0;
@@ -1685,6 +1688,7 @@ function drawNameplate(h){
   }
 }
 function drawZombie(z){
+  if(window.Models3D && Models3D.drawZombie(ctx,z)){ return; }   // 3D model if available, else 2D below
   const s=z.size, bob=Math.sin(z.walk)*2, step=Math.sin(z.walk)*3, flip=z.faceX<0?-1:1, flash=z.hitFlash>0;
   ctx.save(); ctx.translate(z.x,z.y); ctx.scale(s,s); ctx.lineJoin='round'; ctx.lineCap='round';
   ctx.fillStyle='rgba(0,0,0,.20)'; ctx.beginPath(); ctx.ellipse(0,18,15,5,0,0,TAU); ctx.fill();
@@ -1953,51 +1957,115 @@ requestAnimationFrame(loop);
 })();
 </script>
 
-<!-- ===== Optional 3D hero (avatar screen) — progressive enhancement =====
-     Loads Three.js from CDN and renders the rigged 3D character with its walk
-     animation. Entirely self-contained and fail-safe: if the CDN, WebGL, or the
-     GLB is unavailable, #hero3d simply stays hidden and the 2D game is unaffected. -->
+<!-- ===== 3D model layer — progressive enhancement =====
+     Loads Three.js from a CDN and renders the generated GLB models as billboards
+     in the 2D field (player/zombies whose model exists) AND on the avatar screen.
+     Each model is rendered to an offscreen sprite once per frame; drawHuman/drawZombie
+     blit that sprite at the entity's world position so it depth-sorts with the 2D art.
+     Entirely fail-safe: no CDN / no WebGL / no GLB → window.Models3D never appears and
+     every entity draws its hand-drawn 2D chibi instead. The game never depends on this. -->
 <script type="module">
-const HERO_GLB = 'assets/meshy/alex-walk.glb';   // rigged + walking; relative → works on Pages/githack/local
-const cv = document.getElementById('hero3d');
-const avatarScreen = document.getElementById('avatarScreen');
-if (cv && avatarScreen && 'requestAnimationFrame' in window) {
-  (async () => {
-    let THREE, GLTFLoader;
-    try {
-      THREE = await import('https://unpkg.com/three@0.169.0/build/three.module.js');
-      ({ GLTFLoader } = await import('https://unpkg.com/three@0.169.0/examples/jsm/loaders/GLTFLoader.js'));
-    } catch { return; }                              // offline / blocked → stay 2D
-    let renderer;
-    try { renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); }
-    catch { return; }                                // no WebGL → stay 2D
-    renderer.setPixelRatio(Math.min(2, devicePixelRatio));
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 100);
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x404030, 1.2));
-    const key = new THREE.DirectionalLight(0xffffff, 1.3); key.position.set(2, 4, 3); scene.add(key);
-    let mixer = null, model = null; const clock = new THREE.Clock();
-    new GLTFLoader().load(HERO_GLB, g => {
-      model = g.scene;
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
-      model.position.sub(c); model.position.y -= size.y * 0.02;
-      const m = Math.max(size.x, size.y, size.z) || 1;
-      camera.position.set(0, size.y * 0.15, m * 1.8);
-      scene.add(model);
-      if (g.animations?.length) { mixer = new THREE.AnimationMixer(model); mixer.clipAction(g.animations[0]).play(); clock.getDelta(); }
-      cv.classList.add('ready');                      // reveal only on success
-    }, undefined, () => {});                           // load error → stay hidden
-    const visible = () => !avatarScreen.classList.contains('hidden');
-    (function spin() {
-      requestAnimationFrame(spin);
-      if (!model || !visible()) return;                // render only while the avatar screen shows
-      model.rotation.y += 0.012;
-      if (mixer) mixer.update(clock.getDelta());
-      renderer.render(scene, camera);
+// Which entities have a generated model. As more GLBs are produced, add rows here
+// (or generate this map from assets/meshy/manifest.json). Player avatar 0 = Alex.
+// Keyed by avatar NAME (h.avatar.name) and zombie kind — both are visible on the entity,
+// so this works for the player and every bot without reaching into the game's closures.
+const MODEL_FILES = {
+  'avatar:Alex':   'assets/meshy/alex-walk.glb',   // Alex, rigged + walking
+  'zombie:normal': 'assets/meshy/zombie-normal.glb',
+};
+const SPRITE = 256;                                  // offscreen render-tile size (px)
+const WORLD_H = { character: 46, zombie: 44 };       // on-field pixel height to draw the billboard
+
+(async () => {
+  let THREE, GLTFLoader;
+  try {
+    THREE = await import('https://unpkg.com/three@0.169.0/build/three.module.js');
+    ({ GLTFLoader } = await import('https://unpkg.com/three@0.169.0/examples/jsm/loaders/GLTFLoader.js'));
+  } catch { return; }                                // offline / CDN blocked → stay fully 2D
+  let renderer;
+  const tile = document.createElement('canvas'); tile.width = tile.height = SPRITE;
+  try { renderer = new THREE.WebGLRenderer({ canvas: tile, antialias: true, alpha: true }); }
+  catch { return; }                                  // no WebGL → stay fully 2D
+  renderer.setClearColor(0x000000, 0);
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x40402e, 1.25));
+  const key = new THREE.DirectionalLight(0xffffff, 1.4); key.position.set(2, 5, 4); scene.add(key);
+  const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 100);
+  const loader = new GLTFLoader(), clock = new THREE.Clock();
+
+  // one loaded model = { root, mixer, baseY, frontFacing } kept off-scene until rendered
+  const models = {};
+  for (const [k, url] of Object.entries(MODEL_FILES)) {
+    loader.load(url, g => {
+      const root = g.scene;
+      const box = new THREE.Box3().setFromObject(root), sz = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+      root.position.sub(c); root.position.y += sz.y / 2;     // feet at y=0
+      const m = { root, h: sz.y, mixer: null };
+      if (g.animations?.length) { m.mixer = new THREE.AnimationMixer(root); m.mixer.clipAction(g.animations[0]).play(); }
+      models[k] = m;
+    }, undefined, () => {});                                 // per-model failure → that entity stays 2D
+  }
+
+  // Render model `key` facing `flip` to the offscreen tile; returns the tile canvas or null.
+  function renderTile(key, flip) {
+    const m = models[key]; if (!m) return null;
+    scene.add(m.root);
+    m.root.rotation.set(0, flip < 0 ? -Math.PI / 2.4 : Math.PI / 2.4, 0);   // 3/4 view, faces travel dir
+    const h = m.h, dist = h * 1.7;
+    camera.position.set(0, h * 0.52, dist); camera.lookAt(0, h * 0.5, 0);
+    camera.aspect = 1; camera.updateProjectionMatrix();
+    renderer.setSize(SPRITE, SPRITE, false);
+    renderer.render(scene, camera);
+    scene.remove(m.root);
+    return tile;
+  }
+
+  let lastT = 0;
+  function tickAnim() { const dt = clock.getDelta(); for (const k in models) models[k].mixer?.update(dt); }
+
+  function blit(ctx, key, wx, wy, drawH, flip) {
+    const t = renderTile(key, flip); if (!t) return false;
+    const dw = drawH, dh = drawH;                            // square tile; model centered, feet near bottom
+    // tile has feet ~center-bottom; align the model's feet to (wx,wy)
+    ctx.drawImage(t, wx - dw / 2, wy - dh * 0.92, dw, dh);
+    return true;
+  }
+
+  // Public API consumed by drawHuman/drawZombie. Returns true if it drew the entity in 3D.
+  window.Models3D = {
+    ready: true,
+    _tickedAt: -1,
+    _tickOnce() { const n = performance.now(); if (n !== this._tickedAt) { this._tickedAt = n; tickAnim(); } },
+    drawHuman(ctx, h) {
+      const key = 'avatar:' + (h.avatar && h.avatar.name);
+      if (!models[key]) return false;
+      this._tickOnce();
+      return blit(ctx, key, h.x, h.y + 18, WORLD_H.character, h.faceX < 0 ? -1 : 1);
+    },
+    drawZombie(ctx, z) {
+      const key = 'zombie:' + z.kind;
+      if (!models[key]) return false;
+      this._tickOnce();
+      return blit(ctx, key, z.x, z.y + 18, WORLD_H.zombie * (z.size || 1), z.faceX < 0 ? -1 : 1);
+    },
+  };
+
+  // Also power the avatar-screen hero preview from the same loaded Alex model.
+  const hero = document.getElementById('hero3d');
+  if (hero) {
+    const hctx = hero.getContext('2d');
+    (function heroLoop() {
+      requestAnimationFrame(heroLoop);
+      const avatarScreen = document.getElementById('avatarScreen');
+      if (!avatarScreen || avatarScreen.classList.contains('hidden')) return;
+      window.Models3D._tickOnce();
+      const t = renderTile('avatar:0', 1); if (!t) return;
+      hero.classList.add('ready');
+      hctx.clearRect(0, 0, hero.width, hero.height);
+      hctx.drawImage(t, 0, 0, hero.width, hero.height);
     })();
-  })();
-}
+  }
+})();
 </script>
 </body>
 </html>
