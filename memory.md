@@ -37,6 +37,11 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Weapon-select UI upgrade**: `buildWeaponGrid` cards now show a color-coded **fire-mode chip**
+  (SEMI/AUTO/SHOT/SNIPE/FLAME), a big gold **DPS headline** (`wstats(w)`: perShot×mag / (mag·fireCd
+  + reload), pellets folded in for shotgun/flame), **color-coded stat bars** (dmg red / fire yellow
+  / mag green / range blue via `statBar` + `.bar.<cls>` CSS), and an **EQUIPPED ribbon** on the
+  selected card (moved on click). Fire-rate row shows rounded RPM.
 - **Buildings & water pass**: `drawBuilding` — shingled roof (clipped courses) + ridge highlight +
   chimney, wall top-light/right-shade/trim, paneled door, and **windows that glow warm at
   dusk/night** (`lit=timeOfDay!=='day'`; blue glass + glint by day). `drawDecor` water gains

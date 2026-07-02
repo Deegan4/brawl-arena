@@ -62,6 +62,22 @@
   .card .special{color:#ffd05a;font-weight:700;font-size:11.5px;text-align:center;margin-top:7px;line-height:1.2}
   .wicon{text-align:center;margin:6px 0 2px;height:46px;display:flex;align-items:center;justify-content:center}
   .wicon canvas{display:block}
+  /* ---------- Weapon-select card upgrades ---------- */
+  .wtop{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin:2px 0 6px}
+  .wtop .nm2{font-weight:800;font-size:16px;color:#fff}
+  .wmode{font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 6px;border-radius:999px;
+    text-transform:uppercase;color:#12160c;background:#9aa}
+  .wmode.semi{background:#8fb6d8} .wmode.auto{background:#ffb04a} .wmode.shotgun{background:#ff7a5a}
+  .wmode.sniper{background:#c08bff} .wmode.flame{background:#ff8a3a}
+  .wdps{display:flex;align-items:baseline;justify-content:center;gap:5px;margin:0 0 7px}
+  .wdps b{font-size:23px;font-weight:800;color:#ffd24a;line-height:1;text-shadow:0 1px 0 rgba(0,0,0,.35)}
+  .wdps span{font-size:10px;font-weight:800;color:#cddcb6;letter-spacing:.5px}
+  .bar.dmg > i{background:linear-gradient(90deg,#ffb06a,#e2452f)}
+  .bar.fire > i{background:linear-gradient(90deg,#fff07a,#ffb02e)}
+  .bar.mag > i{background:linear-gradient(90deg,#bfff5a,#5fb32e)}
+  .bar.rng > i{background:linear-gradient(90deg,#8fd6ff,#3a86ff)}
+  .card .equip{position:absolute;top:8px;left:8px;font-size:9px;font-weight:800;letter-spacing:.5px;
+    color:#22330f;background:linear-gradient(180deg,#cdee6a,#9ace3c);padding:2px 7px;border-radius:999px}
 
   .btn{appearance:none;border:none;cursor:pointer;font-weight:800;letter-spacing:1px;
     color:#22330f;border-radius:13px;padding:14px 26px;font-size:19px;text-transform:uppercase;
@@ -2057,22 +2073,37 @@ function buildAvatarGrid(){
     g.appendChild(card);
   });
 }
+const WMODE={semi:'SEMI',auto:'AUTO',shotgun:'SHOT',sniper:'SNIPE',flame:'FLAME'};
+function wstats(w){
+  const pel = w.mode==='shotgun'?6 : w.mode==='flame'?3 : 1;   // projectiles per trigger
+  const perShot = w.dmg*pel;
+  const cyc = w.mag*w.fireCd + w.reload;                       // full mag + reload (s)
+  return { perShot, dps: Math.round(perShot*w.mag/cyc), rpm: Math.round(60/w.fireCd) };
+}
+function statBar(cls,label,val,frac){
+  return '<div class="row"><span>'+label+'</span><span>'+val+'</span></div>'+
+         '<div class="bar '+cls+'"><i style="width:'+clamp(frac*100,4,100)+'%"></i></div>';
+}
 function buildWeaponGrid(){
   const g=el('weaponGrid'); g.innerHTML='';
   WEAPONS.forEach((w,i)=>{
-    const unlocked=weaponUnlocked(w);
-    const card=document.createElement('div'); card.className='card'+(i===meta.weapon?' sel':'')+(unlocked?'':' locked');
+    const unlocked=weaponUnlocked(w), sel=i===meta.weapon, s=wstats(w);
+    const card=document.createElement('div'); card.className='card'+(sel?' sel':'')+(unlocked?'':' locked');
     const ic=document.createElement('div'); ic.className='wicon'; ic.appendChild(weaponIcon(w)); card.appendChild(ic);
-    const nm=document.createElement('div'); nm.className='nm'; nm.textContent=w.name; card.appendChild(nm);
     card.insertAdjacentHTML('beforeend',
-      '<div class="row"><span>Damage</span><span>'+w.dmg+'</span></div><div class="bar"><i style="width:'+(Math.min(w.dmg,250)/250*100)+'%"></i></div>'+
-      '<div class="row"><span>Bullets</span><span>'+w.mag+'</span></div><div class="bar"><i style="width:'+Math.min(w.mag/10*100,100)+'%"></i></div>'+
-      '<div class="row"><span>Reload</span><span>'+w.reload+'s</span></div><div class="bar"><i style="width:'+clamp((3.5-w.reload)/3.5*100,8,100)+'%"></i></div>'+
-      '<div class="row"><span>Range</span><span>'+w.range+'</span></div><div class="bar"><i style="width:'+(w.range/600*100)+'%"></i></div>'+
-      '<div class="special">SPECIAL: '+w.special+'</div>'+
+      '<div class="wtop"><span class="nm2">'+w.name+'</span><span class="wmode '+w.mode+'">'+(WMODE[w.mode]||w.mode)+'</span></div>'+
+      '<div class="wdps"><b>'+s.dps+'</b><span>DPS</span></div>'+
+      statBar('dmg','Damage', s.perShot, Math.min(s.perShot,250)/250)+
+      statBar('fire','Fire rate', s.rpm+'/m', Math.min(s.rpm,1200)/1200)+
+      statBar('mag','Mag', w.mag, Math.min(w.mag/60,1))+
+      statBar('rng','Range', w.range, w.range/600)+
+      '<div class="special">'+w.special+'</div>'+
       '<div class="lvl">'+(unlocked?'Level '+w.unlock:'🔒 Level '+w.unlock)+'</div>'+
+      (sel?'<div class="equip">EQUIPPED</div>':'')+
       (unlocked?'':'<div class="lock">🔒</div>'));
-    if(unlocked) card.addEventListener('click',()=>{ meta.weapon=i; saveMeta(); [...g.children].forEach(c=>c.classList.remove('sel')); card.classList.add('sel'); });
+    if(unlocked) card.addEventListener('click',()=>{ meta.weapon=i; saveMeta();
+      [...g.children].forEach(c=>{ c.classList.remove('sel'); const e=c.querySelector('.equip'); if(e) e.remove(); });
+      card.classList.add('sel'); card.insertAdjacentHTML('beforeend','<div class="equip">EQUIPPED</div>'); });
     g.appendChild(card);
   });
 }
