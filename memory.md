@@ -37,6 +37,10 @@ original sprites). Everything lives in [`index.html`](index.html). No build step
 - **Visual pass**: edge vignette (offscreen-blitted), smooth camera follow, richer ground
   (flowers/rocks/dirt paths, round + pine trees, swaying grass), pulsing pickup glow. Perf:
   ground decor draws in a flat pass (no per-frame y-sort), grass batched to one stroke.
+- **Buildings-in-ponds fix**: `buildDecor` placed buildings checking only other buildings + map
+  centre, never water — so houses could spawn on top of ponds. Added a pond-AABB rejection
+  (`wd.s+30` × `wd.s*0.64+30`) to the building placement loop. Verified 0 overlaps across 400
+  regenerated worlds (3600 buildings), building count unaffected. (Reported via landscape screenshot.)
 - **Landscape HUD fix**: the bottom-anchored vertical `#powers` stack (`bottom:210px`, tuned for
   tall portrait) rode up into the top-right minimap on short/landscape viewports. Added
   `@media (max-height:560px)` → powers become a compact **bottom-centre row**, minimap scales to

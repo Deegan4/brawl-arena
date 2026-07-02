@@ -669,6 +669,8 @@ function buildDecor(){
     do{ const w=rand(110,210), h=rand(90,170); b={type:'building', x:rand(160,ARENA-160-w), y:rand(160,ARENA-160-h), w, h, roof:pick(ROOFS)}; ok=true;
       if(dist2(b.x+b.w/2,b.y+b.h/2,ARENA/2,ARENA/2) < 360*360) ok=false;
       for(const o of obstacles) if(b.x<o.x+o.w+50 && b.x+b.w+50>o.x && b.y<o.y+o.h+50 && b.y+b.h+50>o.y) ok=false;
+      for(const wd of decor) if(wd.type==='water'){ const pw=wd.s+30, ph=wd.s*0.64+30;   // keep houses out of ponds
+        if(b.x<wd.x+pw && b.x+b.w>wd.x-pw && b.y<wd.y+ph && b.y+b.h>wd.y-ph){ ok=false; break; } }
       tries++; } while(!ok && tries<20);
     if(ok){ obstacles.push(b); decor.push(b); } }
   for(let i=0;i<26;i++){ decor.push({type:'tree', x:rand(120,ARENA-120), y:rand(120,ARENA-120), s:rand(0.85,1.4), round:Math.random()<0.4}); }
